@@ -1,0 +1,102 @@
+curl -X POST http://localhost:8000/negotiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Decidir la tecnología para un nuevo proyecto",
+    "deadline": "2026-09-01",
+    "budget": 100000,
+    "max_rounds": 3
+  }' | jq '.'
+
+  curl -X POST http://localhost:8000/negotiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Asignar presupuesto para el departamento de I+D",
+    "deadline": "2026-08-30",
+    "budget": 500000,
+    "max_rounds": 5
+  }' | jq '.'
+
+  curl -X POST http://localhost:8000/negotiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Seleccionar proveedor de cloud para la empresa",
+    "deadline": "2026-09-15",
+    "budget": 200000,
+    "max_rounds": 7
+  }' | jq '.'
+
+
+  curl -X POST http://localhost:8000/negotiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Implementar políticas de sostenibilidad en la oficina",
+    "deadline": "2026-12-31",
+    "budget": 75000,
+    "max_rounds": 4
+  }' | jq '.'
+
+
+  curl -X POST http://localhost:8000/negotiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Contratar nuevo equipo de desarrollo",
+    "deadline": "2026-10-01",
+    "budget": 300000,
+    "max_rounds": 6
+  }' | jq '.'
+
+
+  curl -X POST http://localhost:8000/negotiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Implementar nuevo sistema de seguridad informática",
+    "deadline": "2026-11-01",
+    "budget": 150000,
+    "max_rounds": 8
+  }' | jq '.'
+
+  curl -X POST http://localhost:8000/negotiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Lanzar campaña de marketing para nuevo producto",
+    "deadline": "2026-09-30",
+    "budget": 120000,
+    "max_rounds": 4
+  }' | jq '.'
+
+
+  curl -X POST http://localhost:8000/negotiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Definir características del nuevo producto",
+    "deadline": "2026-08-25",
+    "budget": 400000,
+    "max_rounds": 10
+  }' | jq '.'
+
+
+  curl -X POST http://localhost:8000/negotiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Resolución urgente de bug crítico",
+    "deadline": "2026-08-17",
+    "budget": 50000,
+    "max_rounds": 2
+  }' | jq '.'
+
+
+  curl -X POST http://localhost:8000/negotiate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Adquirir nueva startup de IA",
+    "deadline": "2026-12-15",
+    "budget": 2000000,
+    "max_rounds": 12
+  }' | jq '.'
+
+  curl -X POST http://localhost:8000/negotiate   -H "Content-Type: application/json"   -d '{
+    "goal": "Diseñar una microfactoría sostenible con reducción de carbono del 30%",
+    "deadline": "2026-12-31",
+    "budget": 500000,
+    "max_rounds": 10
+  }' | jq '.'

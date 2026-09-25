@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS audit_log (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    event_type VARCHAR(100) NOT NULL,
+    agent_id VARCHAR(100),
+    data JSONB NOT NULL,
+    prev_hash VARCHAR(256) NOT NULL,
+    hash VARCHAR(256) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS contracts (
+    id SERIAL PRIMARY KEY,
+    contract_id VARCHAR(100) UNIQUE NOT NULL,
+    state_machine JSONB NOT NULL,
+    status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS agent_state (
+    agent_id VARCHAR(100) PRIMARY KEY,
+    domain VARCHAR(50) NOT NULL,
+    stake DECIMAL(10,4) DEFAULT 1.0,
+    weight DECIMAL(10,4) DEFAULT 1.0,
+    suspended BOOLEAN DEFAULT FALSE
+);
