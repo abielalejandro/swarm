@@ -14,6 +14,19 @@ import httpx
 from datetime import datetime, timedelta
 import asyncio
 
+def build_negotiate_payload(goal, deadline=None, budget=0.0, max_rounds=0, agents=None):
+    """Arma el body de POST /negotiate omitiendo los opcionales vacíos. goal es obligatorio."""
+    payload = {"goal": goal.strip()}
+    if deadline and deadline.strip():
+        payload["deadline"] = deadline.strip()
+    if budget and budget > 0:
+        payload["budget"] = float(budget)
+    if max_rounds and max_rounds > 0:
+        payload["max_rounds"] = int(max_rounds)
+    if agents:
+        payload["agents"] = list(agents)
+    return payload
+
 def safe_date(value):
     """Devuelve una fecha segura o 'N/A'"""
     if not value:
@@ -78,6 +91,25 @@ def get_active_sessions():
     except Exception:
         pass
     return {"sessions": [], "count": 0}
+
+DEFAULT_AGENTS = ["Engineering", "Finance", "Security", "DevOps", "Legal"]
+
+@st.cache_data(ttl=30, show_spinner=False)
+def get_available_agents():
+    """Lista de agentes disponibles para negociar (fallback a la lista por defecto)."""
+    try:
+        with httpx.Client(timeout=3.0) as client:
+            response = client.get(f"{ORCHESTRATOR_URL}/agents")
+            if response.status_code == 200:
+                data = response.json()
+                names = [a.get("agent_id") if isinstance(a, dict) else a
+                         for a in data.get("agents", [])]
+                names = [n for n in names if n]
+                if names:
+                    return names
+    except Exception:
+        pass
+    return DEFAULT_AGENTS
 
 @st.cache_data(ttl=10, show_spinner=False)
 def get_all_sessions():
@@ -181,7 +213,7 @@ with st.sidebar:
     # Navigation
     page = st.radio(
         "Navigation",
-        ["🏠 Overview", "📈 Sessions", "🤖 Agents", "🧠 Emotional State", "📜 Audit Log", "⚖️ Constitution"]
+        ["🏠 Overview", "🚀 New Negotiation", "📈 Sessions", "🤖 Agents", "🧠 Emotional State", "📜 Audit Log", "⚖️ Constitution"]
     )
     
     st.divider()
@@ -825,6 +857,73 @@ elif page == "⚖️ Constitution":
                     st.error("❌ Invalid override secret")
     else:
         st.info("Could not load constitution. Is the Guardian service running?")
+
+# ============================================
+# PAGE: NEW NEGOTIATION
+# ============================================
+
+elif page == "🚀 New Negotiation":
+    st.title("🚀 New Negotiation")
+    st.caption("Componé y ejecutá una solicitud a POST /negotiate desde la UI")
+
+    with st.form("new_negotiation"):
+        goal = st.text_area(
+            "Goal *",
+            placeholder="Ej: Seleccionar proveedor de cloud para la empresa",
+            help="Objetivo de la negociación (obligatorio)"
+        )
+
+        col1, col2 = st.columns(2)
+        with col1:
+            deadline = st.text_input(
+                "Deadline (YYYY-MM-DD)",
+                placeholder="2026-09-15",
+                help="Fecha límite (opcional)"
+            )
+            budget = st.number_input(
+                "Budget",
+                min_value=0.0,
+                value=0.0,
+                step=1000.0,
+                help="Presupuesto en la moneda del proyecto (0 = sin especificar)"
+            )
+        with col2:
+            max_rounds = st.number_input(
+                "Max rounds",
+                min_value=0,
+                value=0,
+                step=1,
+                help="Rondas máximas (0 = usar el valor por defecto del orquestador)"
+            )
+            agents = st.multiselect(
+                "Agents",
+                options=get_available_agents(),
+                help="Agentes participantes (vacío = todos por defecto)"
+            )
+
+        submitted = st.form_submit_button("▶️ Ejecutar negociación", type="primary")
+
+    if submitted:
+        if not goal.strip():
+            st.warning("⚠️ El campo **Goal** es obligatorio.")
+        else:
+            payload = build_negotiate_payload(goal, deadline, budget, max_rounds, agents)
+
+            try:
+                with httpx.Client(timeout=30.0) as client:
+                    resp = client.post(f"{ORCHESTRATOR_URL}/negotiate", json=payload)
+                if resp.status_code // 100 == 2:
+                    data = resp.json()
+                    session_id = data.get("session_id", "N/A")
+                    status = data.get("status", "N/A")
+                    st.success(f"✅ Negociación iniciada — session_id: `{session_id}` · status: **{status}**")
+                    st.caption("Abrí **📈 Sessions** para seguir las rondas de esta sesión.")
+                    with st.expander("Respuesta completa"):
+                        st.json(data)
+                else:
+                    st.error(f"❌ La API respondió {resp.status_code}: {resp.text}")
+            except Exception as e:
+                st.error(f"❌ No se pudo contactar al orquestador: {e}")
 
 # ============================================
 # FOOTER
