@@ -32,4 +32,18 @@ h = bcrypt.hash("s3cr3t")
 assert bcrypt.verify("s3cr3t", h) is True
 assert bcrypt.verify("wrong", h) is False
 
-print("OK: auth (PASETO v4.local + bcrypt)")
+# --- Cookie Secure dinámico: true/false fuerzan; auto usa el scheme ---
+class _FakeReq:
+    def __init__(self, scheme):
+        self.url = type("U", (), {"scheme": scheme})()
+
+auth.COOKIE_SECURE = "false"
+assert auth._resolve_secure(_FakeReq("https")) is False, "false fuerza"
+auth.COOKIE_SECURE = "true"
+assert auth._resolve_secure(_FakeReq("http")) is True, "true fuerza"
+auth.COOKIE_SECURE = "auto"
+assert auth._resolve_secure(_FakeReq("https")) is True, "auto+https"
+assert auth._resolve_secure(_FakeReq("http")) is False, "auto+http"
+assert auth._resolve_secure(None) is False, "auto sin request"
+
+print("OK: auth (PASETO v4.local + bcrypt + cookie secure dinámico)")

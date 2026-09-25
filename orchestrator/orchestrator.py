@@ -117,12 +117,12 @@ class LoginRequest(_BaseModel):
     password: str
 
 @app.post("/auth/login")
-async def auth_login(credentials: LoginRequest, response: Response):
+async def auth_login(credentials: LoginRequest, request: Request, response: Response):
     """Valida credenciales y setea la cookie de sesión PASETO."""
     if not verify_user(credentials.username, credentials.password):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     token = issue_token(credentials.username)
-    set_session_cookie(response, token)
+    set_session_cookie(response, token, request)
     return {"status": "ok", "username": credentials.username}
 
 @app.post("/auth/logout")

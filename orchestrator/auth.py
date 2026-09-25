@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 PASETO_KEY = os.getenv("PASETO_KEY", "")
 SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", "28800"))  # 8h
 COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "swarm_session")
-COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower() != "false"
+# "true"/"false" fuerzan el flag; "auto" lo resuelve por el scheme del request
+# (respetando X-Forwarded-Proto si uvicorn corre con --proxy-headers).
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true").lower()
 
 
 # ---------- PASETO ----------
@@ -128,13 +130,22 @@ def upsert_user(username, password):
 
 # ---------- Cookie / dependencia FastAPI ----------
 
-def set_session_cookie(response, token):
+def _resolve_secure(request):
+    """Resuelve el flag Secure: true/false lo fuerzan; auto usa el scheme del request."""
+    if COOKIE_SECURE == "false":
+        return False
+    if COOKIE_SECURE == "auto":
+        return bool(request) and request.url.scheme == "https"
+    return True  # default seguro
+
+
+def set_session_cookie(response, token, request=None):
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
         max_age=SESSION_TTL_SECONDS,
         httponly=True,
-        secure=COOKIE_SECURE,
+        secure=_resolve_secure(request),
         samesite="lax",
     )
 
