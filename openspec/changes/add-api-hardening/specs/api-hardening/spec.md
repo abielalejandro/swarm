@@ -24,11 +24,12 @@ una ventana configurable, respondiendo `429 Too Many Requests` al exceder el lí
 - **WHEN** hace peticiones GET
 - **THEN** el rate limiter de escritura no las bloquea
 
-#### Scenario: Redis no disponible
+#### Scenario: Backend Redis del limiter no disponible
 
-- **GIVEN** el backend Redis no responde
+- **GIVEN** el backend Redis configurado para el rate limiter no responde
 - **WHEN** llega una petición de escritura
-- **THEN** el orquestador permite la petición y registra una advertencia, sin caerse
+- **THEN** el orquestador continúa aplicando el rate limit con fallback en memoria
+- **AND** no interrumpe el servicio por la caída de Redis
 
 ### Requirement: Idempotencia en el inicio de negociación
 

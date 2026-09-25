@@ -7,13 +7,14 @@ crea sesiones duplicadas, y no hay límite de tasa que frene ráfagas o abuso.
 
 ## What Changes
 
-- **Rate limiting** en los endpoints de escritura del orquestador: ventana fija por IP
-  usando el Redis ya existente (`INCR`+`EXPIRE`); al exceder, responde `429` con
-  `Retry-After`. Configurable por env; no aplica a GET (el dashboard hace polling).
+- **Rate limiting** en los endpoints de escritura del orquestador usando `slowapi`,
+  con almacenamiento Redis configurable y fallback en memoria; al exceder, responde
+  `429`. No aplica a GET (el dashboard hace polling).
 - **Idempotencia** en `POST /negotiate`: si el cliente envía el header `Idempotency-Key`,
   la respuesta se cachea en Redis con TTL y una repetición con la misma clave devuelve
   la respuesta original sin crear otra sesión. Sin el header, comportamiento actual.
-- Módulo compartido `orchestrator/middleware.py` reutilizando `round_manager.redis`.
+- Helper pequeño `orchestrator/idempotency.py` para cachear respuestas idempotentes
+  en Redis.
 - El dashboard ("🚀 New Negotiation") envía un `Idempotency-Key` por envío de formulario.
 
 ## Capabilities
@@ -23,7 +24,8 @@ crea sesiones duplicadas, y no hay límite de tasa que frene ráfagas o abuso.
 
 ## Impact
 
-- Afecta: `orchestrator/orchestrator.py` (registrar middleware + idempotencia en
-  `/negotiate`), nuevo `orchestrator/middleware.py`, `dashboard/app.py` (enviar header).
-- No cambia el contrato de respuesta ni la orquestación. Degrada de forma segura si
-  Redis no responde (permite la petición; no bloquea el servicio).
+- Afecta: `orchestrator/orchestrator.py` (registrar limiter + idempotencia en
+  `/negotiate`), nuevo `orchestrator/idempotency.py`, `dashboard/app.py` (enviar header)
+  y `orchestrator/requirements.txt` (dependencia `slowapi`).
+- No cambia el contrato de respuesta ni la orquestación. El rate limiter usa fallback
+  en memoria si el backend Redis del limiter no responde.

@@ -14,7 +14,11 @@ import uuid
 from datetime import datetime
 
 from round_manager import RoundManager, NegotiationSession, RoundStatus
-from middleware import RateLimitMiddleware, idempotency_get, idempotency_set
+from idempotency import idempotency_get, idempotency_set
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 # Setup logging
 logging.basicConfig(level=os.getenv('LOG_LEVEL', 'INFO'))
@@ -39,8 +43,20 @@ app.add_middleware(
 # Initialize round manager
 round_manager = RoundManager()
 
-# Rate limiting en endpoints de escritura (usa el Redis compartido del round manager)
-app.add_middleware(RateLimitMiddleware, redis_client=round_manager.redis)
+RATE_LIMIT_WRITE_LIMIT = os.getenv("RATE_LIMIT_WRITE_LIMIT", "30/minute")
+RATE_LIMIT_STORAGE_URI = os.getenv(
+    "RATE_LIMIT_STORAGE_URI",
+    f"redis://{os.getenv('REDIS_HOST', 'redis')}:{os.getenv('REDIS_PORT', '6379')}/0",
+)
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    storage_uri=RATE_LIMIT_STORAGE_URI,
+    in_memory_fallback_enabled=True,
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # ============================================
 # MODELS
@@ -140,24 +156,25 @@ async def get_agent_status(agent_id: str) -> Dict:
     }
 
 @app.post("/negotiate")
+@limiter.limit(RATE_LIMIT_WRITE_LIMIT)
 async def start_negotiation(
-    request: NegotiationRequest,
+    negotiation: NegotiationRequest,
     background_tasks: BackgroundTasks,
-    http_request: Request,
+    request: Request,
 ) -> NegotiationResponse:
     """
     Start a new multi-agent negotiation
     """
     # Idempotencia: si la clave ya fue vista, devolver la respuesta original.
-    idem_key = http_request.headers.get("Idempotency-Key")
+    idem_key = request.headers.get("Idempotency-Key")
     cached = idempotency_get(round_manager.redis, idem_key)
     if cached is not None:
         logger.info(f"Idempotent replay for key {idem_key}")
         return NegotiationResponse(**cached)
 
     # Select agents
-    if request.agents:
-        agents = [a for a in request.agents if a in AVAILABLE_AGENTS]
+    if negotiation.agents:
+        agents = [a for a in negotiation.agents if a in AVAILABLE_AGENTS]
         if not agents:
             raise HTTPException(status_code=400, detail="No valid agents specified")
     else:
@@ -178,7 +195,7 @@ async def start_negotiation(
     
     # Create session
     session = round_manager.create_session(
-        goal=request.goal,
+        goal=negotiation.goal,
         agents=active_agents
     )
     
@@ -186,9 +203,9 @@ async def start_negotiation(
     background_tasks.add_task(
         run_negotiation,
         session.session_id,
-        request.goal,
+        negotiation.goal,
         active_agents,
-        request.max_rounds
+        negotiation.max_rounds
     )
     
     logger.info(f"Negotiation started: {session.session_id}")
@@ -265,7 +282,9 @@ async def list_sessions():
     }
 
 @app.post("/session/{session_id}/interrogate")
+@limiter.limit(RATE_LIMIT_WRITE_LIMIT)
 async def interrogate_agent(
+    request: Request,
     session_id: str,
     agent_id: str,
     style: str = "standard"
@@ -282,7 +301,8 @@ async def interrogate_agent(
     return result
 
 @app.post("/session/{session_id}/cancel")
-async def cancel_session(session_id: str):
+@limiter.limit(RATE_LIMIT_WRITE_LIMIT)
+async def cancel_session(request: Request, session_id: str):
     """Cancel a negotiation session"""
     session = round_manager.get_session(session_id)
     if not session:
@@ -447,7 +467,8 @@ async def get_config():
     }
 
 @app.post("/reset")
-async def reset_system():
+@limiter.limit(RATE_LIMIT_WRITE_LIMIT)
+async def reset_system(request: Request):
     """Emergency reset - clears all sessions"""
     # This would require human authorization in production
     sessions = round_manager.redis.smembers("active_sessions")
