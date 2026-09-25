@@ -54,8 +54,14 @@ RATE_LIMIT_STORAGE_URI = os.getenv(
     f"redis://{os.getenv('REDIS_HOST', 'redis')}:{os.getenv('REDIS_PORT', '6379')}/0",
 )
 
+def _rate_limit_key(request):
+    """Limita por usuario cuando hay sesión válida; si no, cae a IP."""
+    user = read_token(request.cookies.get(COOKIE_NAME))
+    return f"user:{user}" if user else get_remote_address(request)
+
+
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=_rate_limit_key,
     storage_uri=RATE_LIMIT_STORAGE_URI,
     in_memory_fallback_enabled=True,
 )
