@@ -1,0 +1,23 @@
+schema: spec-driven
+
+context: |
+  Proyecto: Swarm v1.0 — sistema multiagente de negociación para toma de decisiones.
+  Stack: Python 3, FastAPI, Redis (estado/mensajería), Qdrant (memoria vectorial),
+  PostgreSQL (persistencia), Docker Compose. LLM multi-proveedor
+  (openai, deepseek, anthropic, groq, azure, ollama, lm_studio, custom) vía LLMClient.
+  Orquestación propia por rondas (round_manager); NO usa LangGraph.
+  Idioma de specs: español. Requisitos con SHALL; escenarios given-when-then.
+  Dominio: dado un objetivo (goal, deadline, budget), agentes especializados
+  (Engineering, Finance, Security, DevOps, Legal) negocian en rondas hasta consenso;
+  un Guardian con reglas inmutables hace cumplir la "constitución"; un Executor
+  puede materializar la decisión (ansible/terraform).
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

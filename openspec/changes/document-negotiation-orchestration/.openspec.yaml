@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-09-25
+goal: Documentar como spec el sistema actual de orquestación de negociación
+  multiagente
