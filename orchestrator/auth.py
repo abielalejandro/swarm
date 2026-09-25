@@ -11,6 +11,13 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 
+# Request se usa como hint de require_user. En runtime (contenedor) FastAPI lo
+# resuelve vía get_type_hints; en el check de dev sin fastapi, cae a Any.
+try:
+    from fastapi import Request
+except ImportError:  # solo en el check de dev
+    from typing import Any as Request
+
 logger = logging.getLogger(__name__)
 
 # Config por env
@@ -154,7 +161,7 @@ def clear_session_cookie(response):
     response.delete_cookie(key=COOKIE_NAME)
 
 
-def require_user(request):
+def require_user(request: Request):
     """Dependencia FastAPI: exige cookie de sesión válida; devuelve el username o 401."""
     from fastapi import HTTPException
     token = request.cookies.get(COOKIE_NAME)
