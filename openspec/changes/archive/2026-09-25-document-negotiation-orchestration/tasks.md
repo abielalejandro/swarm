@@ -12,5 +12,5 @@
 
 ## 3. Validación
 
-- [ ] 3.1 `openspec validate document-negotiation-orchestration --strict` sin errores
-- [ ] 3.2 Revisión de Romerd antes de archivar el change hacia `openspec/specs/`
+- [x] 3.1 `openspec validate document-negotiation-orchestration --strict` sin errores
+- [x] 3.2 Revisión de Romerd antes de archivar el change hacia `openspec/specs/`
