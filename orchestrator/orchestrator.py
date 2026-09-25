@@ -452,6 +452,7 @@ async def run_negotiation(
         )
         
         # Complete round
+        result["proposals"] = proposals
         await round_manager.complete_round(
             negotiation_round.round_id,
             result
@@ -463,6 +464,7 @@ async def run_negotiation(
             
             # Finalize contract
             contract = await round_manager.finalize_contract(session_id, proposals)
+            session = round_manager.get_session(session_id) or session
             session.final_contract = contract
             session.status = "completed"
             session.completed_at = datetime.utcnow().isoformat()
@@ -475,6 +477,7 @@ async def run_negotiation(
         # Check for deadlock
         if round_manager.check_deadlock(session_id, round_number):
             logger.warning(f"Session {session_id} - Deadlocked at round {round_number}")
+            session = round_manager.get_session(session_id) or session
             session.status = "deadlocked"
             round_manager.update_session(session)
             round_manager.redis.srem("active_sessions", session_id)
@@ -489,6 +492,7 @@ async def run_negotiation(
     
     # Max rounds reached without consensus
     logger.warning(f"Session {session_id} - Max rounds reached without consensus")
+    session = round_manager.get_session(session_id) or session
     session.status = "max_rounds_reached"
     round_manager.update_session(session)
     round_manager.redis.srem("active_sessions", session_id)

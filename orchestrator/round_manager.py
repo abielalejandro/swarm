@@ -403,6 +403,7 @@ class RoundManager:
         
         round_dict = json.loads(round_data)
         round_dict["status"] = RoundStatus.COMPLETED.value if hasattr(RoundStatus.COMPLETED, 'value') else str(RoundStatus.COMPLETED)
+        round_dict["proposals"] = result.get("proposals", round_dict.get("proposals", []))
         round_dict["consensus_reached"] = result.get("consensus", False)
         round_dict["end_time"] = datetime.utcnow().isoformat()
         round_dict["evaluation"] = result
