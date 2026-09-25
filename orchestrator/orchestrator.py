@@ -2,7 +2,7 @@
 Orchestrator - Main API for negotiation orchestration
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
@@ -15,6 +15,11 @@ from datetime import datetime
 
 from round_manager import RoundManager, NegotiationSession, RoundStatus
 from idempotency import idempotency_get, idempotency_set
+from auth import (
+    require_user, verify_user, issue_token,
+    set_session_cookie, clear_session_cookie, read_token, COOKIE_NAME,
+)
+from pydantic import BaseModel as _BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -98,6 +103,34 @@ AVAILABLE_AGENTS = [
 ]
 
 # ============================================
+# AUTH ENDPOINTS
+# ============================================
+
+class LoginRequest(_BaseModel):
+    username: str
+    password: str
+
+@app.post("/auth/login")
+async def auth_login(credentials: LoginRequest, response: Response):
+    """Valida credenciales y setea la cookie de sesión PASETO."""
+    if not verify_user(credentials.username, credentials.password):
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+    token = issue_token(credentials.username)
+    set_session_cookie(response, token)
+    return {"status": "ok", "username": credentials.username}
+
+@app.post("/auth/logout")
+async def auth_logout(response: Response):
+    """Borra la cookie de sesión."""
+    clear_session_cookie(response)
+    return {"status": "ok"}
+
+@app.get("/auth/me")
+async def auth_me(user: str = Depends(require_user)):
+    """Devuelve el usuario de la sesión actual."""
+    return {"username": user}
+
+# ============================================
 # CORE ENDPOINTS
 # ============================================
 
@@ -161,6 +194,7 @@ async def start_negotiation(
     negotiation: NegotiationRequest,
     background_tasks: BackgroundTasks,
     request: Request,
+    user: str = Depends(require_user),
 ) -> NegotiationResponse:
     """
     Start a new multi-agent negotiation
@@ -302,7 +336,7 @@ async def interrogate_agent(
 
 @app.post("/session/{session_id}/cancel")
 @limiter.limit(RATE_LIMIT_WRITE_LIMIT)
-async def cancel_session(request: Request, session_id: str):
+async def cancel_session(request: Request, session_id: str, user: str = Depends(require_user)):
     """Cancel a negotiation session"""
     session = round_manager.get_session(session_id)
     if not session:
@@ -468,7 +502,7 @@ async def get_config():
 
 @app.post("/reset")
 @limiter.limit(RATE_LIMIT_WRITE_LIMIT)
-async def reset_system(request: Request):
+async def reset_system(request: Request, user: str = Depends(require_user)):
     """Emergency reset - clears all sessions"""
     # This would require human authorization in production
     sessions = round_manager.redis.smembers("active_sessions")

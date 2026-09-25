@@ -209,7 +209,42 @@ with st.sidebar:
         st.error("❌ System Offline")
     
     st.divider()
-    
+
+    # Auth (sesión por cookie PASETO)
+    st.subheader("🔐 Sesión")
+    if "auth_cookies" not in st.session_state:
+        st.session_state["auth_cookies"] = None
+        st.session_state["auth_user"] = None
+    if st.session_state["auth_user"]:
+        st.caption(f"Conectado como **{st.session_state['auth_user']}**")
+        if st.button("Cerrar sesión"):
+            try:
+                httpx.post(f"{ORCHESTRATOR_URL}/auth/logout",
+                           cookies=st.session_state["auth_cookies"] or {}, timeout=5.0)
+            except Exception:
+                pass
+            st.session_state["auth_cookies"] = None
+            st.session_state["auth_user"] = None
+            st.rerun()
+    else:
+        with st.form("login"):
+            lu = st.text_input("Usuario")
+            lp = st.text_input("Contraseña", type="password")
+            if st.form_submit_button("Ingresar"):
+                try:
+                    r = httpx.post(f"{ORCHESTRATOR_URL}/auth/login",
+                                   json={"username": lu, "password": lp}, timeout=10.0)
+                    if r.status_code == 200:
+                        st.session_state["auth_cookies"] = dict(r.cookies)
+                        st.session_state["auth_user"] = r.json().get("username", lu)
+                        st.rerun()
+                    else:
+                        st.error("Credenciales inválidas")
+                except Exception as e:
+                    st.error(f"No se pudo iniciar sesión: {e}")
+
+    st.divider()
+
     # Navigation
     page = st.radio(
         "Navigation",
@@ -912,9 +947,13 @@ elif page == "🚀 New Negotiation":
             try:
                 import uuid
                 headers = {"Idempotency-Key": str(uuid.uuid4())}
+                cookies = st.session_state.get("auth_cookies") or {}
                 with httpx.Client(timeout=30.0) as client:
-                    resp = client.post(f"{ORCHESTRATOR_URL}/negotiate", json=payload, headers=headers)
-                if resp.status_code // 100 == 2:
+                    resp = client.post(f"{ORCHESTRATOR_URL}/negotiate", json=payload,
+                                       headers=headers, cookies=cookies)
+                if resp.status_code == 401:
+                    st.error("🔒 Necesitás iniciar sesión (barra lateral) para lanzar una negociación.")
+                elif resp.status_code // 100 == 2:
                     data = resp.json()
                     session_id = data.get("session_id", "N/A")
                     status = data.get("status", "N/A")
