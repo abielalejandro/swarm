@@ -2,7 +2,7 @@
 Orchestrator - Main API for negotiation orchestration
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
@@ -14,6 +14,7 @@ import uuid
 from datetime import datetime
 
 from round_manager import RoundManager, NegotiationSession, RoundStatus
+from middleware import RateLimitMiddleware, idempotency_get, idempotency_set
 
 # Setup logging
 logging.basicConfig(level=os.getenv('LOG_LEVEL', 'INFO'))
@@ -37,6 +38,9 @@ app.add_middleware(
 
 # Initialize round manager
 round_manager = RoundManager()
+
+# Rate limiting en endpoints de escritura (usa el Redis compartido del round manager)
+app.add_middleware(RateLimitMiddleware, redis_client=round_manager.redis)
 
 # ============================================
 # MODELS
@@ -138,11 +142,19 @@ async def get_agent_status(agent_id: str) -> Dict:
 @app.post("/negotiate")
 async def start_negotiation(
     request: NegotiationRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    http_request: Request,
 ) -> NegotiationResponse:
     """
     Start a new multi-agent negotiation
     """
+    # Idempotencia: si la clave ya fue vista, devolver la respuesta original.
+    idem_key = http_request.headers.get("Idempotency-Key")
+    cached = idempotency_get(round_manager.redis, idem_key)
+    if cached is not None:
+        logger.info(f"Idempotent replay for key {idem_key}")
+        return NegotiationResponse(**cached)
+
     # Select agents
     if request.agents:
         agents = [a for a in request.agents if a in AVAILABLE_AGENTS]
@@ -180,8 +192,8 @@ async def start_negotiation(
     )
     
     logger.info(f"Negotiation started: {session.session_id}")
-    
-    return NegotiationResponse(
+
+    response = NegotiationResponse(
         session_id=session.session_id,
         status=session.status,
         current_round=0,
@@ -190,6 +202,8 @@ async def start_negotiation(
         created_at=session.created_at,
         final_contract=None
     )
+    idempotency_set(round_manager.redis, idem_key, response.dict())
+    return response
 
 @app.get("/session/{session_id}")
 async def get_session_status(session_id: str) -> NegotiationResponse:

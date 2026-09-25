@@ -910,8 +910,10 @@ elif page == "🚀 New Negotiation":
             payload = build_negotiate_payload(goal, deadline, budget, max_rounds, agents)
 
             try:
+                import uuid
+                headers = {"Idempotency-Key": str(uuid.uuid4())}
                 with httpx.Client(timeout=30.0) as client:
-                    resp = client.post(f"{ORCHESTRATOR_URL}/negotiate", json=payload)
+                    resp = client.post(f"{ORCHESTRATOR_URL}/negotiate", json=payload, headers=headers)
                 if resp.status_code // 100 == 2:
                     data = resp.json()
                     session_id = data.get("session_id", "N/A")
