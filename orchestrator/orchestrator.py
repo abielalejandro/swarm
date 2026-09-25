@@ -117,6 +117,7 @@ class LoginRequest(_BaseModel):
     password: str
 
 @app.post("/auth/login")
+@limiter.limit(RATE_LIMIT_WRITE_LIMIT)
 async def auth_login(credentials: LoginRequest, request: Request, response: Response):
     """Valida credenciales y setea la cookie de sesión PASETO."""
     if not verify_user(credentials.username, credentials.password):
