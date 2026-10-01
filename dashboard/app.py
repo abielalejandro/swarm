@@ -531,8 +531,8 @@ elif page == "📈 Sessions":
                         if rounds:
                             st.subheader("🔄 Rondas")
                             for r in rounds[-5:]:
-                                with st.expander(f"Ronda {r.get('round_number', 'N/A')}"):
-                                    st.json(r)
+                                st.markdown(f"**Ronda {r.get('round_number', 'N/A')}**")
+                                st.json(r)
         else:
             st.info("No hay sesiones registradas")
 
