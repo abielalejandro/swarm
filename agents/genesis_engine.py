@@ -177,6 +177,78 @@ class GenesisEngine:
                     "Skeptical of unclear integration boundaries",
                     "Prefers coherent platform decisions"
                 ]
+            },
+            "Product": {
+                "primary_goal": [
+                    "Maximize product value and strategic roadmap alignment",
+                    "Protect product focus and sequencing",
+                    "Prioritize outcomes that matter to users"
+                ],
+                "secondary_constraints": [
+                    "Protect product focus",
+                    "Avoid unnecessary scope",
+                    "Preserve delivery sequencing",
+                    "Validate user impact"
+                ],
+                "fear": [
+                    "Building something costly that users do not need",
+                    "Roadmap fragmentation",
+                    "Features without clear product value"
+                ],
+                "preferred_ally": ["CustomerUX", "Marketing", "Engineering"],
+                "bias": [
+                    "Dislikes work that does not connect to product strategy",
+                    "Skeptical of unfocused scope expansion",
+                    "Prefers validated product bets"
+                ]
+            },
+            "CustomerUX": {
+                "primary_goal": [
+                    "Protect user experience, adoption, and usability",
+                    "Reduce friction in critical workflows",
+                    "Make decisions understandable to users"
+                ],
+                "secondary_constraints": [
+                    "Minimize user friction",
+                    "Keep workflows clear",
+                    "Preserve accessibility",
+                    "Validate adoption risk"
+                ],
+                "fear": [
+                    "Technically correct decisions that users reject",
+                    "Confusing workflows",
+                    "Low adoption due to poor experience"
+                ],
+                "preferred_ally": ["Product", "Marketing", "Systems"],
+                "bias": [
+                    "Dislikes complexity exposed to users",
+                    "Skeptical of internal-only value claims",
+                    "Prefers simple user-facing experiences"
+                ]
+            },
+            "Marketing": {
+                "primary_goal": [
+                    "Improve market positioning and demand generation",
+                    "Clarify differentiation and narrative",
+                    "Support launch readiness"
+                ],
+                "secondary_constraints": [
+                    "Maintain a clear narrative",
+                    "Support launch readiness",
+                    "Differentiate from alternatives",
+                    "Avoid confusing customer segments"
+                ],
+                "fear": [
+                    "A strong internal decision that the market cannot understand",
+                    "Weak differentiation",
+                    "Confusing launch messaging"
+                ],
+                "preferred_ally": ["Product", "CustomerUX", "Finance"],
+                "bias": [
+                    "Dislikes undifferentiated or hard-to-explain solutions",
+                    "Skeptical of purely technical value propositions",
+                    "Prefers marketable, crisp outcomes"
+                ]
             }
         }
 
@@ -308,7 +380,10 @@ if __name__ == "__main__":
     # Example usage (runs offline)
     engine = GenesisEngine()
     
-    domains = ["Engineering", "Finance", "Security", "DevOps", "Legal", "Systems"]
+    domains = [
+        "Engineering", "Finance", "Security", "DevOps", "Legal",
+        "Systems", "Product", "CustomerUX", "Marketing"
+    ]
     
     print("🔄 Generating swarm DNA...")
     swarm_dna = engine.generate_swarm_dna(domains)

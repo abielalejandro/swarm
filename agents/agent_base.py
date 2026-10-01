@@ -166,6 +166,27 @@ class NegotiationAgent:
                 "fear": "Fragmented systems that are expensive to maintain",
                 "preferred_ally": "DevOps",
                 "bias": "Dislikes isolated point solutions"
+            },
+            "Product": {
+                "primary_goal": "Maximize product value and strategic roadmap alignment",
+                "secondary_constraints": ["Protect product focus", "Avoid unnecessary scope", "Validate user impact"],
+                "fear": "Building something costly that users do not need",
+                "preferred_ally": "CustomerUX",
+                "bias": "Dislikes work that does not connect to product strategy"
+            },
+            "CustomerUX": {
+                "primary_goal": "Protect user experience, adoption, and usability",
+                "secondary_constraints": ["Minimize user friction", "Keep workflows clear", "Preserve accessibility"],
+                "fear": "Technically correct decisions that users reject",
+                "preferred_ally": "Product",
+                "bias": "Dislikes complexity exposed to users"
+            },
+            "Marketing": {
+                "primary_goal": "Improve market positioning and demand generation",
+                "secondary_constraints": ["Maintain a clear narrative", "Support launch readiness", "Differentiate from alternatives"],
+                "fear": "A strong internal decision that the market cannot understand",
+                "preferred_ally": "Product",
+                "bias": "Dislikes undifferentiated or hard-to-explain solutions"
             }
         }
         return agendas.get(self.domain, agendas["Engineering"])

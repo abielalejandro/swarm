@@ -106,7 +106,10 @@ AVAILABLE_AGENTS = [
     "Security",
     "DevOps",
     "Legal",
-    "Systems"
+    "Systems",
+    "Product",
+    "CustomerUX",
+    "Marketing"
 ]
 
 # ============================================
