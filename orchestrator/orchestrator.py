@@ -96,6 +96,10 @@ class AgentStatus(BaseModel):
     weight: float
     suspended: bool
 
+class InterrogationRequest(BaseModel):
+    agent_id: str
+    style: str = "standard"
+
 # ============================================
 # AVAILABLE AGENTS
 # ============================================
@@ -335,7 +339,8 @@ async def interrogate_agent(
     request: Request,
     session_id: str,
     agent_id: str,
-    style: str = "standard"
+    style: str = "standard",
+    user: str = Depends(require_user),
 ):
     """Trigger interrogation of a specific agent"""
     session = round_manager.get_session(session_id)
@@ -346,6 +351,24 @@ async def interrogate_agent(
         raise HTTPException(status_code=400, detail="Agent not in session")
     
     result = await round_manager.trigger_interrogation(agent_id, session_id, style)
+    return result
+
+@app.post("/interrogate")
+@limiter.limit(RATE_LIMIT_WRITE_LIMIT)
+async def interrogate_agent_direct(
+    payload: InterrogationRequest,
+    request: Request,
+    user: str = Depends(require_user),
+):
+    """Trigger interrogation of an agent without a negotiation session."""
+    if payload.agent_id not in AVAILABLE_AGENTS:
+        raise HTTPException(status_code=400, detail="Unknown agent")
+
+    result = await round_manager.trigger_interrogation(
+        payload.agent_id,
+        session_id=None,
+        style=payload.style
+    )
     return result
 
 @app.post("/session/{session_id}/cancel")

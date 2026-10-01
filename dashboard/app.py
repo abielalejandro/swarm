@@ -444,6 +444,53 @@ def get_session_rounds(session_id):
         pass
     return {"rounds": [], "count": 0}
 
+def run_interrogation(mode, agent_id, style, session_id=None):
+    """Dispara un interrogatorio desde el orquestador usando la sesión autenticada."""
+    cookies = st.session_state.get("auth_cookies") or {}
+    with httpx.Client(timeout=60.0) as client:
+        if mode == "Session":
+            return client.post(
+                f"{ORCHESTRATOR_URL}/session/{session_id}/interrogate",
+                params={"agent_id": agent_id, "style": style},
+                cookies=cookies
+            )
+        return client.post(
+            f"{ORCHESTRATOR_URL}/interrogate",
+            json={"agent_id": agent_id, "style": style},
+            cookies=cookies
+        )
+
+def render_interrogation_result(result):
+    """Muestra el resultado del Psychologist en bloques legibles."""
+    score = result.get("truth_score")
+    recommendation = result.get("recommendation", "N/A")
+    flags = result.get("deception_flags", [])
+    questions = result.get("questions_asked", [])
+    answers = result.get("answers", [])
+
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        st.metric("Truth score", f"{score:.2f}" if isinstance(score, (int, float)) else "N/A")
+    with col2:
+        st.info(recommendation)
+
+    if flags:
+        st.warning("Flags: " + "; ".join(str(flag) for flag in flags))
+    else:
+        st.success("No deception flags reported")
+
+    st.subheader("Questions and answers")
+    if questions:
+        for idx, question in enumerate(questions, start=1):
+            st.markdown(f"**{idx}. {question}**")
+            answer = answers[idx - 1] if idx - 1 < len(answers) else "N/A"
+            st.write(answer)
+    else:
+        st.info("No questions returned")
+
+    st.subheader("Raw result")
+    st.json(result)
+
 def get_agent_emotional_state(agent_id):
     """Get emotional state for an agent"""
     try:
@@ -546,7 +593,7 @@ with st.sidebar:
     # Navigation
     page = st.radio(
         "Navigation",
-        ["🏠 Overview", "🚀 New Negotiation", "📈 Sessions", "🤖 Agents", "🧠 Emotional State", "📜 Audit Log", "⚖️ Constitution"]
+        ["🏠 Overview", "🚀 New Negotiation", "📈 Sessions", "🤖 Agents", "🧪 Interrogation", "🧠 Emotional State", "📜 Audit Log", "⚖️ Constitution"]
     )
     
     st.divider()
@@ -917,6 +964,79 @@ elif page == "🤖 Agents":
                     st.json(emotional["hidden_agenda"])
                 else:
                     st.info("No hidden agenda available")
+
+# ============================================
+# PAGE: INTERROGATION
+# ============================================
+
+elif page == "🧪 Interrogation":
+    st.title("🧪 Psychologist Interrogation")
+    st.caption("Dispará interrogatorios del Psychologist con o sin sesión de negociación.")
+
+    styles = ["standard", "aggressive", "friendly", "socratic", "pressure"]
+    sessions_data = get_all_sessions()
+    sessions = sessions_data.get("sessions", [])
+    session_options = {
+        f"{s.get('session_id')} · {safe_text(s.get('goal'))[:80]}": s
+        for s in sessions
+        if s.get("session_id")
+    }
+
+    if not st.session_state.get("auth_user"):
+        st.warning("Iniciá sesión en la barra lateral para ejecutar interrogatorios.")
+
+    with st.form("interrogation_form"):
+        mode = st.radio(
+            "Mode",
+            ["Session", "Direct"],
+            horizontal=True,
+            help="Session valida que el agente pertenezca a una negociación. Direct interroga al agente sin negociación."
+        )
+
+        selected_session_label = None
+        session_agents = []
+        if mode == "Session":
+            if session_options:
+                selected_session_label = st.selectbox("Session", list(session_options.keys()))
+                selected_session = session_options[selected_session_label]
+                session_agents = selected_session.get("agents", [])
+                st.caption(f"Estado: {status_label(selected_session.get('status'))}")
+            else:
+                st.info("No hay sesiones disponibles. Usá modo Direct para interrogar sin negociación.")
+
+        agent_options = session_agents if mode == "Session" and session_agents else get_available_agents()
+        col1, col2 = st.columns(2)
+        with col1:
+            agent_id = st.selectbox("Agent", agent_options)
+        with col2:
+            style = st.selectbox("Style", styles)
+
+        submitted = st.form_submit_button("Run interrogation", type="primary")
+
+    if submitted:
+        if not st.session_state.get("auth_user"):
+            st.error("Necesitás iniciar sesión para ejecutar un interrogatorio.")
+        elif mode == "Session" and not selected_session_label:
+            st.error("Seleccioná una sesión o usá modo Direct.")
+        elif not agent_id:
+            st.error("Seleccioná un agente.")
+        else:
+            try:
+                session_id = (
+                    session_options[selected_session_label].get("session_id")
+                    if mode == "Session" else None
+                )
+                response = run_interrogation(mode, agent_id, style, session_id)
+                if response.status_code == 401:
+                    st.error("Sesión inválida o expirada. Iniciá sesión nuevamente.")
+                elif response.status_code // 100 == 2:
+                    result = response.json()
+                    st.success(f"Interrogatorio completado para `{agent_id}`.")
+                    render_interrogation_result(result)
+                else:
+                    st.error(f"La API respondió {response.status_code}: {response.text}")
+            except Exception as e:
+                st.error(f"No se pudo ejecutar el interrogatorio: {e}")
 
 # ============================================
 # PAGE: EMOTIONAL STATE

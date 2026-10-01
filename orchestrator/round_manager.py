@@ -419,7 +419,7 @@ class RoundManager:
     async def trigger_interrogation(
         self,
         agent_id: str,
-        session_id: str,
+        session_id: Optional[str],
         style: str = "standard"
     ) -> Dict:
         """Trigger psychological interrogation"""
