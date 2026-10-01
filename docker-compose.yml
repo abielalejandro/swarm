@@ -123,6 +123,8 @@ services:
       - QDRANT_PORT=6333
       - GUARDIAN_URL=http://guardian:8001
       - LOG_LEVEL=INFO
+      - ENABLE_EMOTIONAL_EMBEDDINGS=${ENABLE_EMOTIONAL_EMBEDDINGS:-false}
+      - HF_HOME=/root/.cache/huggingface
       - TRUTH_SCORE_THRESHOLD=0.50
       - MAX_INTERROGATIONS_PER_AGENT_PER_DAY=3
       # LLM Config
@@ -132,6 +134,8 @@ services:
       - LLM_BASE_URL=${LLM_BASE_URL:-}
     ports:
       - "8002:8002"
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
     depends_on:
       redis:
         condition: service_started
@@ -196,11 +200,15 @@ services:
       - GUARDIAN_URL=http://guardian:8001
       - PSYCHOLOGIST_URL=http://psychologist:8002
       - LOG_LEVEL=INFO
+      - ENABLE_EMOTIONAL_EMBEDDINGS=${ENABLE_EMOTIONAL_EMBEDDINGS:-false}
+      - HF_HOME=/root/.cache/huggingface
       # LLM Config
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo-preview}
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_BASE_URL=${LLM_BASE_URL:-}
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
     depends_on:
       redis:
         condition: service_started
@@ -229,11 +237,15 @@ services:
       - GUARDIAN_URL=http://guardian:8001
       - PSYCHOLOGIST_URL=http://psychologist:8002
       - LOG_LEVEL=INFO
+      - ENABLE_EMOTIONAL_EMBEDDINGS=${ENABLE_EMOTIONAL_EMBEDDINGS:-false}
+      - HF_HOME=/root/.cache/huggingface
       # LLM Config
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo-preview}
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_BASE_URL=${LLM_BASE_URL:-}
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
     depends_on:
       redis:
         condition: service_started
@@ -262,11 +274,15 @@ services:
       - GUARDIAN_URL=http://guardian:8001
       - PSYCHOLOGIST_URL=http://psychologist:8002
       - LOG_LEVEL=INFO
+      - ENABLE_EMOTIONAL_EMBEDDINGS=${ENABLE_EMOTIONAL_EMBEDDINGS:-false}
+      - HF_HOME=/root/.cache/huggingface
       # LLM Config
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo-preview}
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_BASE_URL=${LLM_BASE_URL:-}
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
     depends_on:
       redis:
         condition: service_started
@@ -295,11 +311,15 @@ services:
       - GUARDIAN_URL=http://guardian:8001
       - PSYCHOLOGIST_URL=http://psychologist:8002
       - LOG_LEVEL=INFO
+      - ENABLE_EMOTIONAL_EMBEDDINGS=${ENABLE_EMOTIONAL_EMBEDDINGS:-false}
+      - HF_HOME=/root/.cache/huggingface
       # LLM Config
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo-preview}
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_BASE_URL=${LLM_BASE_URL:-}
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
     depends_on:
       redis:
         condition: service_started
@@ -328,11 +348,15 @@ services:
       - GUARDIAN_URL=http://guardian:8001
       - PSYCHOLOGIST_URL=http://psychologist:8002
       - LOG_LEVEL=INFO
+      - ENABLE_EMOTIONAL_EMBEDDINGS=${ENABLE_EMOTIONAL_EMBEDDINGS:-false}
+      - HF_HOME=/root/.cache/huggingface
       # LLM Config
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo-preview}
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_BASE_URL=${LLM_BASE_URL:-}
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
     depends_on:
       redis:
         condition: service_started
@@ -505,4 +529,6 @@ volumes:
   guardian_logs:
     driver: local
   executor_workspace:
+    driver: local
+  huggingface_cache:
     driver: local

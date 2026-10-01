@@ -5,13 +5,17 @@ Emotional Memory - Vector-based emotional embeddings
 import json
 import os
 import logging
+import hashlib
 import redis
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
-from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
+
+
+def emotional_embeddings_enabled() -> bool:
+    return os.getenv("ENABLE_EMOTIONAL_EMBEDDINGS", "false").lower() in {"1", "true", "yes", "on"}
 
 # ============================================
 # EMOTIONAL EMBEDDING ENGINE
@@ -29,21 +33,33 @@ class EmotionalEmbeddingEngine:
             db=0,
             decode_responses=True
         )
-        
-        # Load embedding model
+        self.model = None
+        self._load_failed = False
+
+    def _get_model(self):
+        if self.model or self._load_failed:
+            return self.model
+        if not emotional_embeddings_enabled():
+            return None
+
         try:
+            from sentence_transformers import SentenceTransformer
+
             self.model = SentenceTransformer('all-MiniLM-L6-v2')
             logger.info("Emotional embedding model loaded")
         except Exception as e:
             logger.error(f"Could not load embedding model: {e}")
+            self._load_failed = True
             self.model = None
+        return self.model
     
     def embed_conversation(self, conversation: str) -> np.ndarray:
         """Convert conversation to embedding vector"""
-        if not self.model:
+        model = self._get_model()
+        if not model:
             return np.zeros(384)  # Default dimension
         
-        embedding = self.model.encode(conversation)
+        embedding = model.encode(conversation)
         return embedding
     
     def calculate_emotional_signature(
@@ -52,7 +68,8 @@ class EmotionalEmbeddingEngine:
         truth_score: float
     ) -> Dict:
         """Calculate emotional signature from conversation"""
-        if not self.model:
+        model = self._get_model()
+        if not model:
             return {
                 "aggression": 0.5,
                 "cooperation": 0.5,
@@ -64,8 +81,8 @@ class EmotionalEmbeddingEngine:
         embedding = self.embed_conversation(conversation)
         
         # Anchors for emotional dimensions (pre-computed)
-        aggression_anchor = self.model.encode("aggressive hostile confrontational")
-        cooperation_anchor = self.model.encode("cooperative helpful collaborative")
+        aggression_anchor = model.encode("aggressive hostile confrontational")
+        cooperation_anchor = model.encode("cooperative helpful collaborative")
         
         # Calculate similarities
         aggression = np.dot(embedding, aggression_anchor) / (

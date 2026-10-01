@@ -14,7 +14,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from llm_client import get_llm_client
-from sentence_transformers import SentenceTransformer
 import httpx
 
 llm = get_llm_client()
@@ -50,13 +49,32 @@ redis_client = redis.Redis(
 )
 
 
-# Embedding model for emotional analysis
-try:
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-    logger.info("Embedding model loaded successfully")
-except Exception as e:
-    logger.warning(f"Could not load embedding model: {e}")
-    embedding_model = None
+embedding_model = None
+embedding_model_load_failed = False
+
+
+def emotional_embeddings_enabled() -> bool:
+    return os.getenv("ENABLE_EMOTIONAL_EMBEDDINGS", "false").lower() in {"1", "true", "yes", "on"}
+
+
+def get_embedding_model():
+    """Load the emotional embedding model only when explicitly enabled and needed."""
+    global embedding_model, embedding_model_load_failed
+    if embedding_model or embedding_model_load_failed:
+        return embedding_model
+    if not emotional_embeddings_enabled():
+        return None
+
+    try:
+        from sentence_transformers import SentenceTransformer
+
+        embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        logger.info("Embedding model loaded successfully")
+    except Exception as e:
+        logger.warning(f"Could not load embedding model: {e}")
+        embedding_model_load_failed = True
+        embedding_model = None
+    return embedding_model
 
 GUARDIAN_URL = os.getenv('GUARDIAN_URL', 'http://guardian:8001')
 TRUTH_SCORE_THRESHOLD = float(os.getenv('TRUTH_SCORE_THRESHOLD', '0.50'))
