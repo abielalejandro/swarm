@@ -44,6 +44,13 @@ con los atributos `HttpOnly`, `Secure` y `SameSite=Lax`, con expiración.
 - **WHEN** hace `GET /auth/me`
 - **THEN** el orquestador devuelve el usuario asociado a la sesión
 
+#### Scenario: Refrescar el dashboard conserva la sesión
+
+- **GIVEN** un usuario autenticado desde el dashboard
+- **WHEN** refresca el navegador
+- **THEN** el dashboard rehidrata la sesión vigente sin pedir login nuevamente
+- **AND** valida la sesión contra `GET /auth/me` antes de reutilizarla
+
 ### Requirement: Proteger endpoints de escritura
 
 Los endpoints de escritura del orquestador (`POST /negotiate`,
@@ -83,4 +90,3 @@ un registro público.
 - **GIVEN** la API de auth expuesta
 - **WHEN** un cliente busca un endpoint de registro
 - **THEN** no existe un endpoint público de auto-registro
-

@@ -11,8 +11,14 @@ import json
 import os
 import redis
 import httpx
+import secrets
 from datetime import datetime, timedelta
 import asyncio
+
+try:
+    import extra_streamlit_components as stx
+except ImportError:
+    stx = None
 
 def build_negotiate_payload(goal, deadline=None, budget=0.0, max_rounds=0, agents=None):
     """Arma el body de POST /negotiate omitiendo los opcionales vacíos. goal es obligatorio."""
@@ -65,10 +71,105 @@ ORCHESTRATOR_URL = os.getenv('ORCHESTRATOR_URL', 'http://localhost:8000')
 GUARDIAN_URL = os.getenv('GUARDIAN_URL', 'http://localhost:8001')
 PSYCHOLOGIST_URL = os.getenv('PSYCHOLOGIST_URL', 'http://localhost:8002')
 EXECUTOR_URL = os.getenv('EXECUTOR_URL', 'http://localhost:8004')
+DASHBOARD_SESSION_COOKIE = os.getenv('DASHBOARD_SESSION_COOKIE', 'swarm_dashboard_session')
+DASHBOARD_SESSION_TTL_SECONDS = int(os.getenv(
+    'DASHBOARD_SESSION_TTL_SECONDS',
+    os.getenv('SESSION_TTL_SECONDS', '86400')
+))
+DASHBOARD_AUTH_PREFIX = "dashboard_auth:"
 
 # ============================================
 # HELPER FUNCTIONS
 # ============================================
+
+@st.cache_resource
+def get_cookie_manager():
+    if stx is None:
+        return None
+    return stx.CookieManager()
+
+
+def _dashboard_auth_key(session_id):
+    return f"{DASHBOARD_AUTH_PREFIX}{session_id}"
+
+
+def _load_dashboard_auth(session_id):
+    if not session_id:
+        return None
+    try:
+        raw = redis_client.get(_dashboard_auth_key(session_id))
+        return json.loads(raw) if raw else None
+    except Exception:
+        return None
+
+
+def _save_dashboard_auth(username, cookies):
+    session_id = st.session_state.get("dashboard_session_id") or secrets.token_urlsafe(32)
+    record = {"username": username, "cookies": dict(cookies or {})}
+    redis_client.setex(
+        _dashboard_auth_key(session_id),
+        DASHBOARD_SESSION_TTL_SECONDS,
+        json.dumps(record)
+    )
+    st.session_state["dashboard_session_id"] = session_id
+    manager = get_cookie_manager()
+    if manager:
+        manager.set(
+            DASHBOARD_SESSION_COOKIE,
+            session_id,
+            expires_at=datetime.utcnow() + timedelta(seconds=DASHBOARD_SESSION_TTL_SECONDS),
+            same_site="lax",
+            key="set_dashboard_session"
+        )
+
+
+def _clear_dashboard_auth():
+    session_id = st.session_state.get("dashboard_session_id")
+    manager = get_cookie_manager()
+    if manager:
+        session_id = session_id or manager.get(DASHBOARD_SESSION_COOKIE)
+    if session_id:
+        try:
+            redis_client.delete(_dashboard_auth_key(session_id))
+        except Exception:
+            pass
+    if manager:
+        manager.delete(DASHBOARD_SESSION_COOKIE, key="delete_dashboard_session")
+    st.session_state["dashboard_session_id"] = None
+    st.session_state["auth_cookies"] = None
+    st.session_state["auth_user"] = None
+
+
+def hydrate_auth_from_dashboard_session():
+    st.session_state.setdefault("dashboard_session_id", None)
+    st.session_state.setdefault("auth_cookies", None)
+    st.session_state.setdefault("auth_user", None)
+
+    if st.session_state["auth_user"] and st.session_state["auth_cookies"]:
+        return
+
+    manager = get_cookie_manager()
+    if not manager:
+        return
+
+    session_id = manager.get(DASHBOARD_SESSION_COOKIE)
+    record = _load_dashboard_auth(session_id)
+    if not record:
+        return
+
+    cookies = record.get("cookies") or {}
+    try:
+        response = httpx.get(f"{ORCHESTRATOR_URL}/auth/me", cookies=cookies, timeout=5.0)
+        if response.status_code == 200:
+            username = response.json().get("username") or record.get("username")
+            st.session_state["dashboard_session_id"] = session_id
+            st.session_state["auth_cookies"] = cookies
+            st.session_state["auth_user"] = username
+            redis_client.expire(_dashboard_auth_key(session_id), DASHBOARD_SESSION_TTL_SECONDS)
+        else:
+            _clear_dashboard_auth()
+    except Exception:
+        pass
 
 def get_agent_status():
     """Get status of all agents"""
@@ -188,6 +289,8 @@ def get_constitution():
 # SIDEBAR
 # ============================================
 
+hydrate_auth_from_dashboard_session()
+
 with st.sidebar:
     st.title("🐝 Swarm Dashboard")
     st.caption(f"v1.0.0 - {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
@@ -212,9 +315,6 @@ with st.sidebar:
 
     # Auth (sesión por cookie PASETO)
     st.subheader("🔐 Sesión")
-    if "auth_cookies" not in st.session_state:
-        st.session_state["auth_cookies"] = None
-        st.session_state["auth_user"] = None
     if st.session_state["auth_user"]:
         st.caption(f"Conectado como **{st.session_state['auth_user']}**")
         if st.button("Cerrar sesión"):
@@ -223,10 +323,11 @@ with st.sidebar:
                            cookies=st.session_state["auth_cookies"] or {}, timeout=5.0)
             except Exception:
                 pass
-            st.session_state["auth_cookies"] = None
-            st.session_state["auth_user"] = None
+            _clear_dashboard_auth()
             st.rerun()
     else:
+        if stx is None:
+            st.caption("La sesión persistente requiere instalar `extra-streamlit-components`.")
         with st.form("login"):
             lu = st.text_input("Usuario")
             lp = st.text_input("Contraseña", type="password")
@@ -237,6 +338,8 @@ with st.sidebar:
                     if r.status_code == 200:
                         st.session_state["auth_cookies"] = dict(r.cookies)
                         st.session_state["auth_user"] = r.json().get("username", lu)
+                        _save_dashboard_auth(st.session_state["auth_user"],
+                                             st.session_state["auth_cookies"])
                         st.rerun()
                     else:
                         st.error("Credenciales inválidas")
