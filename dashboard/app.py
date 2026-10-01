@@ -12,6 +12,7 @@ import os
 import redis
 import httpx
 import secrets
+from html import escape
 from datetime import datetime, timedelta
 import asyncio
 
@@ -40,6 +41,188 @@ def safe_date(value):
     if isinstance(value, str) and len(value) >= 10:
         return value[:10]
     return str(value)[:10] if value else "N/A"
+
+
+def safe_text(value, default="N/A"):
+    if value is None or value == "":
+        return default
+    return str(value)
+
+
+def status_label(status):
+    labels = {
+        "active": "Activa",
+        "completed": "Completada",
+        "deadlocked": "Sin consenso",
+        "cancelled": "Cancelada",
+        "max_rounds_reached": "Rondas agotadas",
+        "failed": "Fallida",
+    }
+    return labels.get(status, safe_text(status))
+
+
+def _json_pretty(value):
+    return json.dumps(value, ensure_ascii=False, indent=2, default=str)
+
+
+def build_decision_report_payload(session_data, rounds_data):
+    rounds = rounds_data.get("rounds", []) if rounds_data else []
+    proposals_count = sum(len(r.get("proposals", [])) for r in rounds)
+    evaluations_count = sum(len(r.get("evaluation", {}).get("evaluations", [])) for r in rounds)
+    return {
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "session": session_data,
+        "rounds": rounds,
+        "summary": {
+            "session_id": session_data.get("session_id"),
+            "goal": session_data.get("goal"),
+            "status": session_data.get("status"),
+            "status_label": status_label(session_data.get("status")),
+            "agents": session_data.get("agents", []),
+            "current_round": session_data.get("current_round", 0),
+            "max_rounds": session_data.get("max_rounds", 0),
+            "created_at": session_data.get("created_at"),
+            "completed_at": session_data.get("completed_at"),
+            "rounds_recorded": len(rounds),
+            "proposals_count": proposals_count,
+            "evaluations_count": evaluations_count,
+            "has_final_contract": bool(session_data.get("final_contract")),
+        }
+    }
+
+
+def _html_dict_table(items):
+    rows = []
+    for label, value in items:
+        rows.append(
+            "<tr>"
+            f"<th>{escape(label)}</th>"
+            f"<td>{escape(safe_text(value))}</td>"
+            "</tr>"
+        )
+    return "<table>" + "".join(rows) + "</table>"
+
+
+def build_decision_report_html(report):
+    summary = report["summary"]
+    session = report["session"]
+    rounds = report["rounds"]
+    final_contract = session.get("final_contract")
+    agents = summary.get("agents", [])
+    generated = report.get("generated_at")
+
+    html_rounds = []
+    for round_item in rounds:
+        proposals = round_item.get("proposals", [])
+        evaluation = round_item.get("evaluation", {})
+        evaluations = evaluation.get("evaluations", [])
+        proposal_blocks = []
+        for proposal in proposals:
+            proposal_blocks.append(
+                "<article class='item'>"
+                f"<h4>{escape(safe_text(proposal.get('agent_id'), 'Agente'))}</h4>"
+                f"<p><strong>Dominio:</strong> {escape(safe_text(proposal.get('domain')))}</p>"
+                f"<p><strong>Racional:</strong> {escape(safe_text(proposal.get('rationale')))}</p>"
+                f"<pre>{escape(_json_pretty(proposal.get('terms', proposal)))}</pre>"
+                "</article>"
+            )
+
+        evaluation_blocks = []
+        for item in evaluations:
+            evaluation_blocks.append(
+                "<article class='item'>"
+                f"<h4>{escape(safe_text(item.get('evaluator_agent') or item.get('evaluator'), 'Evaluador'))}</h4>"
+                f"<p><strong>Decisión:</strong> {escape(safe_text(item.get('decision')))}</p>"
+                f"<p><strong>Score:</strong> {escape(safe_text(item.get('score')))}</p>"
+                f"<p><strong>Racional:</strong> {escape(safe_text(item.get('rationale')))}</p>"
+                "</article>"
+            )
+
+        html_rounds.append(
+            "<section class='round'>"
+            f"<h3>Ronda {escape(safe_text(round_item.get('round_number')))}</h3>"
+            + _html_dict_table([
+                ("Estado", round_item.get("status")),
+                ("Consenso alcanzado", "Sí" if round_item.get("consensus_reached") else "No"),
+                ("Inicio", round_item.get("start_time")),
+                ("Fin", round_item.get("end_time")),
+                ("Tasa de aceptación", evaluation.get("acceptance_rate")),
+            ])
+            + "<h4>Propuestas</h4>"
+            + ("".join(proposal_blocks) if proposal_blocks else "<p class='muted'>Sin propuestas registradas.</p>")
+            + "<h4>Evaluaciones</h4>"
+            + ("".join(evaluation_blocks) if evaluation_blocks else "<p class='muted'>Sin evaluaciones registradas.</p>")
+            + "</section>"
+        )
+
+    contract_html = (
+        f"<pre>{escape(_json_pretty(final_contract))}</pre>"
+        if final_contract else
+        "<p class='muted'>No hay contrato final registrado.</p>"
+    )
+
+    return f"""<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Decision Report - {escape(safe_text(summary.get("session_id")))}</title>
+  <style>
+    :root {{ color-scheme: light; }}
+    body {{ font-family: Arial, sans-serif; color: #1f2933; margin: 40px; line-height: 1.45; }}
+    header {{ border-bottom: 2px solid #0f766e; margin-bottom: 24px; padding-bottom: 16px; }}
+    h1 {{ margin: 0 0 8px; font-size: 28px; }}
+    h2 {{ border-bottom: 1px solid #d9e2ec; margin-top: 28px; padding-bottom: 6px; }}
+    h3 {{ margin-top: 20px; color: #0f766e; }}
+    table {{ border-collapse: collapse; width: 100%; margin: 12px 0 18px; }}
+    th, td {{ border: 1px solid #d9e2ec; padding: 8px 10px; text-align: left; vertical-align: top; }}
+    th {{ width: 220px; background: #f0f4f8; }}
+    pre {{ background: #f8fafc; border: 1px solid #d9e2ec; padding: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }}
+    .badge {{ display: inline-block; background: #ccfbf1; color: #115e59; padding: 4px 8px; border-radius: 4px; font-weight: 700; }}
+    .muted {{ color: #66788a; }}
+    .item {{ border-left: 4px solid #99f6e4; padding: 8px 12px; margin: 10px 0; background: #fbffff; }}
+    .round {{ break-inside: avoid; }}
+    footer {{ border-top: 1px solid #d9e2ec; margin-top: 36px; padding-top: 12px; font-size: 12px; color: #66788a; }}
+    @media print {{ body {{ margin: 20mm; }} .round {{ page-break-inside: avoid; }} }}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Decision Report</h1>
+    <p class="muted">Swarm v1.0 · Generado: {escape(safe_text(generated))}</p>
+    <p><span class="badge">{escape(safe_text(summary.get("status_label")))}</span></p>
+  </header>
+
+  <section>
+    <h2>Resumen ejecutivo</h2>
+    {_html_dict_table([
+        ("Session ID", summary.get("session_id")),
+        ("Objetivo", summary.get("goal")),
+        ("Estado", summary.get("status_label")),
+        ("Agentes", ", ".join(agents) if agents else "N/A"),
+        ("Rondas ejecutadas", summary.get("current_round")),
+        ("Rondas registradas", summary.get("rounds_recorded")),
+        ("Propuestas registradas", summary.get("proposals_count")),
+        ("Evaluaciones registradas", summary.get("evaluations_count")),
+        ("Creada", summary.get("created_at")),
+        ("Completada", summary.get("completed_at")),
+    ])}
+  </section>
+
+  <section>
+    <h2>Resultado</h2>
+    {contract_html}
+  </section>
+
+  <section>
+    <h2>Trazabilidad de rondas</h2>
+    {''.join(html_rounds) if html_rounds else "<p class='muted'>No hay rondas registradas para esta sesión.</p>"}
+  </section>
+
+  <footer>
+    Este reporte excluye agendas ocultas, prompts internos y secretos operativos. Para auditoría técnica completa, usar el JSON crudo exportado desde el dashboard.
+  </footer>
+</body>
+</html>"""
 # ============================================
 # PAGE CONFIG
 # ============================================
@@ -621,15 +804,40 @@ elif page == "📈 Sessions":
                         st.write("**Goal:**", session_data.get("goal", "N/A"))
                         st.write("**Agents:**", ", ".join(session_data.get("agents", [])))
 
+                        # Ver rondas
+                        rounds_data = get_session_rounds(selected)
+                        rounds = rounds_data.get("rounds", [])
+
+                        st.subheader("📤 Export")
+                        report = build_decision_report_payload(session_data, rounds_data)
+                        report_html = build_decision_report_html(report)
+                        report_json = _json_pretty(report)
+                        safe_session_id = "".join(
+                            ch if ch.isalnum() or ch in ("-", "_") else "_"
+                            for ch in selected
+                        )
+                        export_cols = st.columns(2)
+                        export_cols[0].download_button(
+                            "Download decision report (HTML)",
+                            data=report_html,
+                            file_name=f"{safe_session_id}-decision-report.html",
+                            mime="text/html",
+                            key=f"download_report_html_{selected}"
+                        )
+                        export_cols[1].download_button(
+                            "Download raw data (JSON)",
+                            data=report_json,
+                            file_name=f"{safe_session_id}-decision-data.json",
+                            mime="application/json",
+                            key=f"download_report_json_{selected}"
+                        )
+
                         # Ver contrato
                         contract = session_data.get("final_contract")
                         if contract:
                             st.subheader("📄 Contrato Final")
                             st.json(contract)
 
-                        # Ver rondas
-                        rounds_data = get_session_rounds(selected)
-                        rounds = rounds_data.get("rounds", [])
                         if rounds:
                             st.subheader("🔄 Rondas")
                             for r in rounds[-5:]:
