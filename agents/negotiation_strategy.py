@@ -128,11 +128,12 @@ class NegotiationStrategy:
         """
         # Domain compatibility mapping
         compatibility = {
-            "Engineering": ["DevOps", "Security"],
+            "Engineering": ["DevOps", "Security", "Systems"],
             "Finance": ["Security", "Legal"],
-            "Security": ["Legal", "DevOps"],
-            "DevOps": ["Engineering", "Security"],
-            "Legal": ["Security", "Finance"]
+            "Security": ["Legal", "DevOps", "Systems"],
+            "DevOps": ["Engineering", "Security", "Systems"],
+            "Legal": ["Security", "Finance"],
+            "Systems": ["Engineering", "DevOps", "Security"]
         }
         
         preferred = compatibility.get(self.domain, [])

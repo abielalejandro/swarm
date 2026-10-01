@@ -105,7 +105,8 @@ AVAILABLE_AGENTS = [
     "Finance",
     "Security",
     "DevOps",
-    "Legal"
+    "Legal",
+    "Systems"
 ]
 
 # ============================================

@@ -375,7 +375,7 @@ def get_active_sessions():
         pass
     return {"sessions": [], "count": 0}
 
-DEFAULT_AGENTS = ["Engineering", "Finance", "Security", "DevOps", "Legal"]
+DEFAULT_AGENTS = ["Engineering", "Finance", "Security", "DevOps", "Legal", "Systems"]
 
 @st.cache_data(ttl=30, show_spinner=False)
 def get_available_agents():

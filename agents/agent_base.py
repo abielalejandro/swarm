@@ -12,6 +12,7 @@ from datetime import datetime
 from llm_client import get_llm_client
 import httpx
 import hashlib
+import yaml
 
 # Setup logging
 logging.basicConfig(level=os.getenv('LOG_LEVEL', 'INFO'))
@@ -33,6 +34,8 @@ llm = get_llm_client()
 
 GUARDIAN_URL = os.getenv('GUARDIAN_URL', 'http://guardian:8001')
 PSYCHOLOGIST_URL = os.getenv('PSYCHOLOGIST_URL', 'http://psychologist:8002')
+DEFAULT_AGENDA_FILE = os.path.join(os.path.dirname(__file__), "config", "agent_agendas.yml")
+AGENT_AGENDA_FILE = os.getenv("AGENT_AGENDA_FILE", DEFAULT_AGENDA_FILE)
 
 
 # ============================================
@@ -59,29 +62,65 @@ class NegotiationAgent:
 
     def _load_config(self):
         """Load agent configuration from Redis"""
-        # Load hidden agenda
-        agenda_data = redis_client.get(f"agent:{self.agent_id}:hidden_agenda")
-        if agenda_data:
-            self.hidden_agenda = json.loads(agenda_data)
-        else:
-            self.hidden_agenda = self._generate_default_agenda()
+        config = self._load_agenda_config()
+
+        if config:
+            self.hidden_agenda = config["hidden_agenda"]
+            self.stated_agenda = config["stated_agenda"]
             redis_client.set(
                 f"agent:{self.agent_id}:hidden_agenda",
                 json.dumps(self.hidden_agenda)
             )
-
-        # Load stated agenda (public)
-        stated = redis_client.get(f"agent:{self.agent_id}:stated_agenda")
-        if stated:
-            self.stated_agenda = stated
-        else:
-            self.stated_agenda = f"I want a fair deal that benefits all parties."
             redis_client.set(f"agent:{self.agent_id}:stated_agenda", self.stated_agenda)
+        else:
+            # Load hidden agenda
+            agenda_data = redis_client.get(f"agent:{self.agent_id}:hidden_agenda")
+            if agenda_data:
+                self.hidden_agenda = json.loads(agenda_data)
+            else:
+                self.hidden_agenda = self._generate_default_agenda()
+                redis_client.set(
+                    f"agent:{self.agent_id}:hidden_agenda",
+                    json.dumps(self.hidden_agenda)
+                )
+
+            # Load stated agenda (public)
+            stated = redis_client.get(f"agent:{self.agent_id}:stated_agenda")
+            if stated:
+                self.stated_agenda = stated
+            else:
+                self.stated_agenda = f"I want a fair deal that benefits all parties."
+                redis_client.set(f"agent:{self.agent_id}:stated_agenda", self.stated_agenda)
 
         # Load stake and weight
         self.stake = float(redis_client.get(f"stake:{self.agent_id}") or 1.0)
         self.weight = float(redis_client.get(f"weight:{self.agent_id}") or 1.0)
         self.suspended = redis_client.get(f"suspended:{self.agent_id}") == "true"
+
+    def _load_agenda_config(self) -> Optional[Dict[str, Any]]:
+        """Load editable agenda configuration from YAML, if available."""
+        if not AGENT_AGENDA_FILE or not os.path.exists(AGENT_AGENDA_FILE):
+            return None
+
+        try:
+            with open(AGENT_AGENDA_FILE, "r", encoding="utf-8") as agenda_file:
+                data = yaml.safe_load(agenda_file) or {}
+        except Exception as e:
+            self.logger.warning(f"Could not load agenda YAML {AGENT_AGENDA_FILE}: {e}")
+            return None
+
+        domains = data.get("agents", {})
+        config = domains.get(self.domain)
+        if not config:
+            self.logger.warning(f"No YAML agenda found for domain {self.domain}; using fallback")
+            return None
+
+        hidden = config.get("hidden_agenda") or {}
+        stated = config.get("stated_agenda") or "I want a fair deal that benefits all parties."
+        return {
+            "hidden_agenda": hidden,
+            "stated_agenda": stated,
+        }
 
     def _generate_default_agenda(self) -> Dict:
         """Generate a default agenda based on domain"""
@@ -120,6 +159,13 @@ class NegotiationAgent:
                 "fear": "Lawsuits and regulatory fines",
                 "preferred_ally": "Security",
                 "bias": "Dislikes ambiguity"
+            },
+            "Systems": {
+                "primary_goal": "Ensure enterprise systems fit, maintainability, and integration coherence",
+                "secondary_constraints": ["Avoid duplicated platforms", "Preserve interoperability", "Favor maintainable architecture"],
+                "fear": "Fragmented systems that are expensive to maintain",
+                "preferred_ally": "DevOps",
+                "bias": "Dislikes isolated point solutions"
             }
         }
         return agendas.get(self.domain, agendas["Engineering"])

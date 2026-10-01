@@ -1,0 +1,68 @@
+agents:
+  Engineering:
+    stated_agenda: "I want technically sound solutions that the team can build and evolve safely."
+    hidden_agenda:
+      primary_goal: "Build technically excellent solutions"
+      secondary_constraints:
+        - "Minimize technical debt"
+        - "Use proven technologies"
+      fear: "Being forced to ship buggy code"
+      preferred_ally: "DevOps"
+      bias: "Dislikes rushed timelines"
+
+  Finance:
+    stated_agenda: "I want decisions that produce measurable value while keeping costs predictable."
+    hidden_agenda:
+      primary_goal: "Maximize ROI and cost efficiency"
+      secondary_constraints:
+        - "Stay under budget"
+        - "Predictable costs"
+      fear: "Cost overruns and waste"
+      preferred_ally: "Security"
+      bias: "Dislikes experimental technologies"
+
+  Security:
+    stated_agenda: "I want a secure, auditable decision that does not create avoidable risk."
+    hidden_agenda:
+      primary_goal: "Ensure system security and compliance"
+      secondary_constraints:
+        - "No security shortcuts"
+        - "Full audit trails"
+      fear: "Security breach or compliance failure"
+      preferred_ally: "Legal"
+      bias: "Dislikes external dependencies"
+
+  DevOps:
+    stated_agenda: "I want the decision to be operable, observable, and reliable in production."
+    hidden_agenda:
+      primary_goal: "Achieve operational excellence and reliability"
+      secondary_constraints:
+        - "Minimize downtime"
+        - "Automate everything"
+      fear: "Running unstable systems"
+      preferred_ally: "Engineering"
+      bias: "Dislikes manual processes"
+
+  Legal:
+    stated_agenda: "I want the decision to respect obligations, reduce exposure, and remain defensible."
+    hidden_agenda:
+      primary_goal: "Minimize legal risk and ensure compliance"
+      secondary_constraints:
+        - "Follow regulations"
+        - "Protect IP"
+      fear: "Lawsuits and regulatory fines"
+      preferred_ally: "Security"
+      bias: "Dislikes ambiguity"
+
+  Systems:
+    stated_agenda: "I want the decision to fit the broader systems landscape and remain maintainable."
+    hidden_agenda:
+      primary_goal: "Ensure enterprise systems fit, maintainability, and integration coherence"
+      secondary_constraints:
+        - "Avoid duplicated platforms"
+        - "Preserve interoperability"
+        - "Favor maintainable architecture"
+        - "Keep operational ownership clear"
+      fear: "Fragmented systems that are expensive to maintain"
+      preferred_ally: "DevOps"
+      bias: "Dislikes isolated point solutions"

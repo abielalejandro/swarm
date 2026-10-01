@@ -5,9 +5,14 @@ This runs OFFLINE - no network access
 
 import json
 import hashlib
+import os
 import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
+import yaml
+
+DEFAULT_AGENDA_FILE = os.path.join(os.path.dirname(__file__), "config", "agent_agendas.yml")
+AGENT_AGENDA_FILE = os.getenv("AGENT_AGENDA_FILE", DEFAULT_AGENDA_FILE)
 
 # ============================================
 # GENESIS ENGINE
@@ -24,6 +29,10 @@ class GenesisEngine:
     
     def _load_templates(self) -> Dict:
         """Load agenda templates"""
+        yaml_templates = self._load_yaml_templates()
+        if yaml_templates:
+            return yaml_templates
+
         return {
             "Engineering": {
                 "primary_goal": [
@@ -144,8 +153,62 @@ class GenesisEngine:
                     "Skeptical of verbal agreements",
                     "Prefers written documentation"
                 ]
+            },
+            "Systems": {
+                "primary_goal": [
+                    "Ensure enterprise systems fit, maintainability, and integration coherence",
+                    "Preserve interoperability across platforms",
+                    "Reduce long-term complexity across the systems landscape"
+                ],
+                "secondary_constraints": [
+                    "Avoid duplicated platforms",
+                    "Preserve interoperability",
+                    "Favor maintainable architecture",
+                    "Keep operational ownership clear"
+                ],
+                "fear": [
+                    "Fragmented systems that are expensive to maintain",
+                    "Point solutions creating integration debt",
+                    "Unclear ownership across systems"
+                ],
+                "preferred_ally": ["Engineering", "DevOps", "Security"],
+                "bias": [
+                    "Dislikes isolated point solutions",
+                    "Skeptical of unclear integration boundaries",
+                    "Prefers coherent platform decisions"
+                ]
             }
         }
+
+    def _load_yaml_templates(self) -> Optional[Dict]:
+        """Load templates from the editable agenda YAML when present."""
+        if not AGENT_AGENDA_FILE or not os.path.exists(AGENT_AGENDA_FILE):
+            return None
+
+        try:
+            with open(AGENT_AGENDA_FILE, "r", encoding="utf-8") as agenda_file:
+                data = yaml.safe_load(agenda_file) or {}
+        except Exception:
+            return None
+
+        templates = {}
+        for domain, config in (data.get("agents") or {}).items():
+            hidden = config.get("hidden_agenda") or {}
+            templates[domain] = {
+                "primary_goal": self._as_list(hidden.get("primary_goal")),
+                "secondary_constraints": self._as_list(hidden.get("secondary_constraints")),
+                "fear": self._as_list(hidden.get("fear")),
+                "preferred_ally": self._as_list(hidden.get("preferred_ally")),
+                "bias": self._as_list(hidden.get("bias")),
+            }
+        return templates or None
+
+    def _as_list(self, value) -> List:
+        if value is None:
+            return ["Unknown"]
+        if isinstance(value, list):
+            return value or ["Unknown"]
+        return [value]
     
     def generate_agenda(self, domain: str, seed_phrase: str) -> Dict:
         """Generate a unique hidden agenda for an agent"""
@@ -245,7 +308,7 @@ if __name__ == "__main__":
     # Example usage (runs offline)
     engine = GenesisEngine()
     
-    domains = ["Engineering", "Finance", "Security", "DevOps", "Legal"]
+    domains = ["Engineering", "Finance", "Security", "DevOps", "Legal", "Systems"]
     
     print("🔄 Generating swarm DNA...")
     swarm_dna = engine.generate_swarm_dna(domains)
