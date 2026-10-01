@@ -82,7 +82,6 @@ DASHBOARD_AUTH_PREFIX = "dashboard_auth:"
 # HELPER FUNCTIONS
 # ============================================
 
-@st.cache_resource
 def get_cookie_manager():
     if stx is None:
         return None
