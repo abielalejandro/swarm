@@ -534,6 +534,123 @@ services:
       - swarm_network
     restart: unless-stopped
 
+  agent_sales:
+    build:
+      context: ./agents
+      dockerfile: Dockerfile
+    container_name: swarm_agent_sales
+    environment:
+      - AGENT_ID=Sales_001
+      - AGENT_DOMAIN=Sales
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - GUARDIAN_URL=http://guardian:8001
+      - PSYCHOLOGIST_URL=http://psychologist:8002
+      - LOG_LEVEL=INFO
+      - AGENT_AGENDA_FILE=/app/config/agent_agendas.yml
+      - ENABLE_EMOTIONAL_EMBEDDINGS=${ENABLE_EMOTIONAL_EMBEDDINGS:-false}
+      - HF_HOME=/root/.cache/huggingface
+      # LLM Config
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo-preview}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+    volumes:
+      - ./agents/config:/app/config:ro
+      - huggingface_cache:/root/.cache/huggingface
+    depends_on:
+      redis:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      guardian:
+        condition: service_started
+      psychologist:
+        condition: service_started
+    networks:
+      - swarm_network
+    restart: unless-stopped
+
+  agent_operationssupport:
+    build:
+      context: ./agents
+      dockerfile: Dockerfile
+    container_name: swarm_agent_operationssupport
+    environment:
+      - AGENT_ID=OperationsSupport_001
+      - AGENT_DOMAIN=OperationsSupport
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - GUARDIAN_URL=http://guardian:8001
+      - PSYCHOLOGIST_URL=http://psychologist:8002
+      - LOG_LEVEL=INFO
+      - AGENT_AGENDA_FILE=/app/config/agent_agendas.yml
+      - ENABLE_EMOTIONAL_EMBEDDINGS=${ENABLE_EMOTIONAL_EMBEDDINGS:-false}
+      - HF_HOME=/root/.cache/huggingface
+      # LLM Config
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo-preview}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+    volumes:
+      - ./agents/config:/app/config:ro
+      - huggingface_cache:/root/.cache/huggingface
+    depends_on:
+      redis:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      guardian:
+        condition: service_started
+      psychologist:
+        condition: service_started
+    networks:
+      - swarm_network
+    restart: unless-stopped
+
+  agent_dataanalytics:
+    build:
+      context: ./agents
+      dockerfile: Dockerfile
+    container_name: swarm_agent_dataanalytics
+    environment:
+      - AGENT_ID=DataAnalytics_001
+      - AGENT_DOMAIN=DataAnalytics
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - GUARDIAN_URL=http://guardian:8001
+      - PSYCHOLOGIST_URL=http://psychologist:8002
+      - LOG_LEVEL=INFO
+      - AGENT_AGENDA_FILE=/app/config/agent_agendas.yml
+      - ENABLE_EMOTIONAL_EMBEDDINGS=${ENABLE_EMOTIONAL_EMBEDDINGS:-false}
+      - HF_HOME=/root/.cache/huggingface
+      # LLM Config
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4-turbo-preview}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+    volumes:
+      - ./agents/config:/app/config:ro
+      - huggingface_cache:/root/.cache/huggingface
+    depends_on:
+      redis:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      guardian:
+        condition: service_started
+      psychologist:
+        condition: service_started
+    networks:
+      - swarm_network
+    restart: unless-stopped
+
   # ============================================
   # EXECUTOR - EJECUCIÓN DE CONTRATOS
   # ============================================

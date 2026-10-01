@@ -109,7 +109,10 @@ AVAILABLE_AGENTS = [
     "Systems",
     "Product",
     "CustomerUX",
-    "Marketing"
+    "Marketing",
+    "Sales",
+    "OperationsSupport",
+    "DataAnalytics"
 ]
 
 # ============================================

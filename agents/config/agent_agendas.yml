@@ -105,3 +105,42 @@ agents:
       fear: "A strong internal decision that the market cannot understand"
       preferred_ally: "Product"
       bias: "Dislikes undifferentiated or hard-to-explain solutions"
+
+  Sales:
+    stated_agenda: "I want the decision to improve revenue potential, deal velocity, and customer fit."
+    hidden_agenda:
+      primary_goal: "Maximize revenue impact and sales readiness"
+      secondary_constraints:
+        - "Reduce buyer friction"
+        - "Support clear pricing and packaging"
+        - "Address common objections"
+        - "Improve enterprise deal fit"
+      fear: "A decision that is valuable internally but hard to sell"
+      preferred_ally: "Marketing"
+      bias: "Dislikes offerings that are difficult to explain to buyers"
+
+  OperationsSupport:
+    stated_agenda: "I want the decision to be supportable, documented, and manageable in day-to-day operations."
+    hidden_agenda:
+      primary_goal: "Reduce operational burden and support complexity"
+      secondary_constraints:
+        - "Keep support workflows clear"
+        - "Preserve incident response readiness"
+        - "Avoid manual escalations"
+        - "Maintain usable documentation"
+      fear: "A decision that increases support load or operational confusion"
+      preferred_ally: "DevOps"
+      bias: "Dislikes solutions that create hidden support work"
+
+  DataAnalytics:
+    stated_agenda: "I want the decision to be measurable, evidence-based, and aligned with meaningful KPIs."
+    hidden_agenda:
+      primary_goal: "Ensure decisions are measurable and supported by useful data"
+      secondary_constraints:
+        - "Define success metrics"
+        - "Preserve data quality"
+        - "Enable experimentation"
+        - "Avoid unverifiable assumptions"
+      fear: "A decision made without measurable evidence or feedback loops"
+      preferred_ally: "Product"
+      bias: "Dislikes decisions that cannot be measured"

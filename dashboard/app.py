@@ -385,6 +385,9 @@ DEFAULT_AGENTS = [
     "Product",
     "CustomerUX",
     "Marketing",
+    "Sales",
+    "OperationsSupport",
+    "DataAnalytics",
 ]
 
 @st.cache_data(ttl=30, show_spinner=False)

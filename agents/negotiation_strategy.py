@@ -134,9 +134,12 @@ class NegotiationStrategy:
             "DevOps": ["Engineering", "Security", "Systems"],
             "Legal": ["Security", "Finance"],
             "Systems": ["Engineering", "DevOps", "Security", "Product"],
-            "Product": ["CustomerUX", "Marketing", "Engineering"],
-            "CustomerUX": ["Product", "Marketing", "Systems"],
-            "Marketing": ["Product", "CustomerUX", "Finance"]
+            "Product": ["CustomerUX", "Marketing", "DataAnalytics", "Engineering"],
+            "CustomerUX": ["Product", "Marketing", "OperationsSupport", "Systems"],
+            "Marketing": ["Product", "CustomerUX", "Sales", "Finance"],
+            "Sales": ["Marketing", "Product", "Finance"],
+            "OperationsSupport": ["DevOps", "CustomerUX", "Systems"],
+            "DataAnalytics": ["Product", "Finance", "Marketing"]
         }
         
         preferred = compatibility.get(self.domain, [])

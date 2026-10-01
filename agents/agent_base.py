@@ -187,6 +187,27 @@ class NegotiationAgent:
                 "fear": "A strong internal decision that the market cannot understand",
                 "preferred_ally": "Product",
                 "bias": "Dislikes undifferentiated or hard-to-explain solutions"
+            },
+            "Sales": {
+                "primary_goal": "Maximize revenue impact and sales readiness",
+                "secondary_constraints": ["Reduce buyer friction", "Support clear pricing and packaging", "Address common objections"],
+                "fear": "A decision that is valuable internally but hard to sell",
+                "preferred_ally": "Marketing",
+                "bias": "Dislikes offerings that are difficult to explain to buyers"
+            },
+            "OperationsSupport": {
+                "primary_goal": "Reduce operational burden and support complexity",
+                "secondary_constraints": ["Keep support workflows clear", "Preserve incident response readiness", "Maintain usable documentation"],
+                "fear": "A decision that increases support load or operational confusion",
+                "preferred_ally": "DevOps",
+                "bias": "Dislikes solutions that create hidden support work"
+            },
+            "DataAnalytics": {
+                "primary_goal": "Ensure decisions are measurable and supported by useful data",
+                "secondary_constraints": ["Define success metrics", "Preserve data quality", "Enable experimentation"],
+                "fear": "A decision made without measurable evidence or feedback loops",
+                "preferred_ally": "Product",
+                "bias": "Dislikes decisions that cannot be measured"
             }
         }
         return agendas.get(self.domain, agendas["Engineering"])

@@ -249,6 +249,78 @@ class GenesisEngine:
                     "Skeptical of purely technical value propositions",
                     "Prefers marketable, crisp outcomes"
                 ]
+            },
+            "Sales": {
+                "primary_goal": [
+                    "Maximize revenue impact and sales readiness",
+                    "Improve deal velocity and customer fit",
+                    "Reduce buyer friction"
+                ],
+                "secondary_constraints": [
+                    "Support clear pricing and packaging",
+                    "Address common objections",
+                    "Improve enterprise deal fit",
+                    "Keep sales enablement simple"
+                ],
+                "fear": [
+                    "A decision that is valuable internally but hard to sell",
+                    "Confusing commercial packaging",
+                    "Features that do not map to buyer value"
+                ],
+                "preferred_ally": ["Marketing", "Product", "Finance"],
+                "bias": [
+                    "Dislikes offerings that are difficult to explain to buyers",
+                    "Skeptical of weak commercial narratives",
+                    "Prefers decisions that help close deals"
+                ]
+            },
+            "OperationsSupport": {
+                "primary_goal": [
+                    "Reduce operational burden and support complexity",
+                    "Keep support workflows clear",
+                    "Improve day-to-day manageability"
+                ],
+                "secondary_constraints": [
+                    "Preserve incident response readiness",
+                    "Avoid manual escalations",
+                    "Maintain usable documentation",
+                    "Keep ownership clear"
+                ],
+                "fear": [
+                    "A decision that increases support load or operational confusion",
+                    "Unclear escalation paths",
+                    "Undocumented operational edge cases"
+                ],
+                "preferred_ally": ["DevOps", "CustomerUX", "Systems"],
+                "bias": [
+                    "Dislikes solutions that create hidden support work",
+                    "Skeptical of undocumented process changes",
+                    "Prefers simple supportable operations"
+                ]
+            },
+            "DataAnalytics": {
+                "primary_goal": [
+                    "Ensure decisions are measurable and supported by useful data",
+                    "Define success metrics and feedback loops",
+                    "Reduce unverifiable assumptions"
+                ],
+                "secondary_constraints": [
+                    "Preserve data quality",
+                    "Enable experimentation",
+                    "Define meaningful KPIs",
+                    "Avoid vanity metrics"
+                ],
+                "fear": [
+                    "A decision made without measurable evidence or feedback loops",
+                    "Poor data quality hiding failure",
+                    "Success criteria that cannot be verified"
+                ],
+                "preferred_ally": ["Product", "Finance", "Marketing"],
+                "bias": [
+                    "Dislikes decisions that cannot be measured",
+                    "Skeptical of intuition-only prioritization",
+                    "Prefers evidence-backed tradeoffs"
+                ]
             }
         }
 
@@ -382,7 +454,8 @@ if __name__ == "__main__":
     
     domains = [
         "Engineering", "Finance", "Security", "DevOps", "Legal",
-        "Systems", "Product", "CustomerUX", "Marketing"
+        "Systems", "Product", "CustomerUX", "Marketing",
+        "Sales", "OperationsSupport", "DataAnalytics"
     ]
     
     print("🔄 Generating swarm DNA...")
