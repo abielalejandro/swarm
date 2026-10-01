@@ -1003,7 +1003,7 @@ elif page == "🚀 New Negotiation":
     st.title("🚀 New Negotiation")
     st.caption("Componé y ejecutá una solicitud a POST /negotiate desde la UI")
 
-    with st.form("new_negotiation"):
+    with st.form("new_negotiation", clear_on_submit=True):
         goal = st.text_area(
             "Goal *",
             placeholder="Ej: Seleccionar proveedor de cloud para la empresa",
