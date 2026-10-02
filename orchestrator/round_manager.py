@@ -95,6 +95,17 @@ class RoundManager:
         self.MAX_ROUNDS = int(os.getenv('MAX_ROUNDS_PER_NEGOTIATION', 20))
         self.ROUND_TIMEOUT = int(os.getenv('ROUND_TIMEOUT_SECONDS', 60))
         self.CONSENSUS_THRESHOLD = float(os.getenv('CONSENSUS_THRESHOLD', 0.6))
+        self.AUTO_INTERROGATION_ENABLED = os.getenv('AUTO_INTERROGATION_ENABLED', 'true').lower() == 'true'
+        self.AUTO_INTERROGATION_ON_DEADLOCK = os.getenv('AUTO_INTERROGATION_ON_DEADLOCK', 'true').lower() == 'true'
+        self.AUTO_INTERROGATION_ON_REPEATED_REJECTION = os.getenv(
+            'AUTO_INTERROGATION_ON_REPEATED_REJECTION',
+            'true'
+        ).lower() == 'true'
+        self.AUTO_INTERROGATION_REJECTION_THRESHOLD = int(os.getenv(
+            'AUTO_INTERROGATION_REJECTION_THRESHOLD',
+            '2'
+        ))
+        self.AUTO_INTERROGATION_STYLE = os.getenv('AUTO_INTERROGATION_STYLE', 'standard')
         
         logger.info("RoundManager initialized")
     
@@ -442,6 +453,93 @@ class RoundManager:
         except Exception as e:
             logger.error(f"Error triggering interrogation: {e}")
             return {"status": "error", "message": str(e)}
+
+    def get_repeated_rejection_agents(self, evaluations: List[Dict]) -> List[str]:
+        """Return agents that rejected proposals at least the configured threshold."""
+        rejection_counts = {}
+        for evaluation in evaluations:
+            if evaluation.get("decision") != "reject":
+                continue
+            agent_id = evaluation.get("evaluator_agent") or evaluation.get("evaluator")
+            if not agent_id:
+                continue
+            rejection_counts[agent_id] = rejection_counts.get(agent_id, 0) + 1
+
+        return [
+            agent_id
+            for agent_id, count in rejection_counts.items()
+            if count >= self.AUTO_INTERROGATION_REJECTION_THRESHOLD
+        ]
+
+    async def run_automatic_interrogations(
+        self,
+        session_id: str,
+        round_number: int,
+        agent_ids: List[str],
+        trigger_reason: str,
+        style: Optional[str] = None
+    ) -> List[Dict]:
+        """Run and persist automatic interrogations. Fails open per agent."""
+        if not self.AUTO_INTERROGATION_ENABLED:
+            return []
+
+        style = style or self.AUTO_INTERROGATION_STYLE
+        results = []
+        for agent_id in dict.fromkeys(agent_ids):
+            result = await self.trigger_interrogation(agent_id, session_id, style)
+            record = self._build_interrogation_record(
+                session_id=session_id,
+                round_number=round_number,
+                agent_id=agent_id,
+                trigger_reason=trigger_reason,
+                style=style,
+                result=result
+            )
+            self.store_automatic_interrogation(record)
+            results.append(record)
+
+        return results
+
+    def _build_interrogation_record(
+        self,
+        session_id: str,
+        round_number: int,
+        agent_id: str,
+        trigger_reason: str,
+        style: str,
+        result: Dict
+    ) -> Dict:
+        return {
+            "session_id": session_id,
+            "round_number": round_number,
+            "agent_id": agent_id,
+            "trigger_reason": trigger_reason,
+            "style": style,
+            "truth_score": result.get("truth_score"),
+            "recommendation": result.get("recommendation"),
+            "deception_flags": result.get("deception_flags", []),
+            "status": result.get("status", "complete" if "truth_score" in result else "unknown"),
+            "message": result.get("message"),
+            "questions_asked": result.get("questions_asked", []),
+            "answers": result.get("answers", []),
+            "created_at": datetime.utcnow().isoformat()
+        }
+
+    def store_automatic_interrogation(self, record: Dict):
+        """Persist automatic interrogation evidence for a session."""
+        key = f"automatic_interrogations:{record['session_id']}"
+        self.redis.rpush(key, json.dumps(record))
+        self.redis.expire(key, 86400 * 30)
+
+    def get_automatic_interrogations(self, session_id: str) -> List[Dict]:
+        """Get automatic interrogation evidence for a session."""
+        records = []
+        for raw in self.redis.lrange(f"automatic_interrogations:{session_id}", 0, -1):
+            try:
+                records.append(json.loads(raw))
+            except Exception as e:
+                logger.warning(f"Could not parse automatic interrogation record: {e}")
+        return records
     
     # ============================================
     # DEADLOCK DETECTION

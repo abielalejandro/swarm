@@ -120,6 +120,10 @@ Variables principales:
 | `COOKIE_SECURE` | `true`, `false` o `auto`. En HTTP local usar `false`. |
 | `SESSION_TTL_SECONDS` | Duración de sesión. |
 | `ENABLE_EMOTIONAL_EMBEDDINGS` | `false` por defecto. Evita descargar modelos al arrancar. |
+| `AUTO_INTERROGATION_ENABLED` | Activa/desactiva interrogatorios automáticos del Psychologist. |
+| `AUTO_INTERROGATION_ON_DEADLOCK` | Interroga agentes cuando una sesión entra en deadlock. |
+| `AUTO_INTERROGATION_ON_REPEATED_REJECTION` | Interroga agentes que rechazan propuestas repetidamente. |
+| `AUTO_INTERROGATION_REJECTION_THRESHOLD` | Rechazos mínimos por ronda para disparar interrogación automática. |
 
 ## Crear Usuarios
 

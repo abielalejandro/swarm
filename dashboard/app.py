@@ -444,6 +444,18 @@ def get_session_rounds(session_id):
         pass
     return {"rounds": [], "count": 0}
 
+@st.cache_data(ttl=5, show_spinner=False)
+def get_session_interrogations(session_id):
+    """Get automatic psychologist interrogations for a specific session."""
+    try:
+        with httpx.Client(timeout=3.0) as client:
+            response = client.get(f"{ORCHESTRATOR_URL}/session/{session_id}/interrogations")
+            if response.status_code == 200:
+                return response.json()
+    except Exception:
+        pass
+    return {"interrogations": [], "count": 0}
+
 def run_interrogation(mode, agent_id, style, session_id=None):
     """Dispara un interrogatorio desde el orquestador usando la sesión autenticada."""
     cookies = st.session_state.get("auth_cookies") or {}
@@ -490,6 +502,32 @@ def render_interrogation_result(result):
 
     st.subheader("Raw result")
     st.json(result)
+
+def render_automatic_interrogations(session_id):
+    data = get_session_interrogations(session_id)
+    interrogations = data.get("interrogations", [])
+
+    st.subheader("🧪 Automatic Interrogations")
+    if not interrogations:
+        st.info("No hay interrogaciones automáticas registradas para esta sesión.")
+        return
+
+    rows = []
+    for item in interrogations:
+        score = item.get("truth_score")
+        rows.append({
+            "Round": item.get("round_number", "N/A"),
+            "Agent": item.get("agent_id", "N/A"),
+            "Reason": item.get("trigger_reason", "N/A"),
+            "Style": item.get("style", "N/A"),
+            "Truth Score": f"{score:.2f}" if isinstance(score, (int, float)) else "N/A",
+            "Status": item.get("status", "N/A"),
+            "Recommendation": item.get("recommendation") or item.get("message") or "N/A",
+            "Flags": "; ".join(item.get("deception_flags") or []) or "None",
+            "Created": safe_text(item.get("created_at"))[:19],
+        })
+
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 def get_agent_emotional_state(agent_id):
     """Get emotional state for an agent"""
@@ -897,6 +935,8 @@ elif page == "📈 Sessions":
                         if contract:
                             st.subheader("📄 Contrato Final")
                             st.json(contract)
+
+                        render_automatic_interrogations(selected)
 
                         if rounds:
                             st.subheader("🔄 Rondas")

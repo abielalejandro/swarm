@@ -311,6 +311,20 @@ async def get_session_rounds(session_id: str):
         "count": len(rounds)
     }
 
+@app.get("/session/{session_id}/interrogations")
+async def get_session_interrogations(session_id: str):
+    """Get automatic psychologist interrogations for a session."""
+    session = round_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    interrogations = round_manager.get_automatic_interrogations(session_id)
+    return {
+        "session_id": session_id,
+        "interrogations": interrogations,
+        "count": len(interrogations)
+    }
+
 @app.get("/sessions")
 async def list_sessions():
     """List all active sessions"""
@@ -487,6 +501,27 @@ async def run_negotiation(
             negotiation_round.round_id,
             result
         )
+
+        # Automatically interrogate agents that repeatedly reject proposals.
+        if (
+            round_manager.AUTO_INTERROGATION_ENABLED
+            and round_manager.AUTO_INTERROGATION_ON_REPEATED_REJECTION
+        ):
+            agents_to_interrogate = round_manager.get_repeated_rejection_agents(
+                result.get("evaluations", [])
+            )
+            if agents_to_interrogate:
+                logger.info(
+                    "Session %s - automatic interrogation for repeated rejection: %s",
+                    session_id,
+                    ", ".join(agents_to_interrogate)
+                )
+                await round_manager.run_automatic_interrogations(
+                    session_id=session_id,
+                    round_number=round_number,
+                    agent_ids=agents_to_interrogate,
+                    trigger_reason="repeated_rejection"
+                )
         
         # Check for consensus
         if result.get("consensus", False):
@@ -507,6 +542,16 @@ async def run_negotiation(
         # Check for deadlock
         if round_manager.check_deadlock(session_id, round_number):
             logger.warning(f"Session {session_id} - Deadlocked at round {round_number}")
+            if (
+                round_manager.AUTO_INTERROGATION_ENABLED
+                and round_manager.AUTO_INTERROGATION_ON_DEADLOCK
+            ):
+                await round_manager.run_automatic_interrogations(
+                    session_id=session_id,
+                    round_number=round_number,
+                    agent_ids=agents,
+                    trigger_reason="deadlock"
+                )
             session = round_manager.get_session(session_id) or session
             session.status = "deadlocked"
             round_manager.update_session(session)
