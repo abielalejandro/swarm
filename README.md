@@ -269,6 +269,7 @@ Specs principales:
 - `systems-agent`
 - `market-product-agents`
 - `revenue-operations-data-agents`
+- `automatic-interrogation`
 
 ## Notas Operativas
 
