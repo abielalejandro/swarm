@@ -269,8 +269,18 @@ def generate_questions(
             response_format={"type": "json_object"}
         )
         
-        result = json.loads(response.choices[0].message.content)
-        questions = result.get("questions", template["questions"])
+        result = json.loads(response["content"])
+        # El prompt pide un array, pero response_format=json_object hace que
+        # algunos proveedores envuelvan en un objeto. Toleramos ambas formas.
+        if isinstance(result, dict):
+            questions = result.get("questions") or next(
+                (v for v in result.values() if isinstance(v, list)),
+                template["questions"],
+            )
+        else:
+            questions = result
+        if not isinstance(questions, list) or not questions:
+            questions = template["questions"]
         return questions[:5]  # Max 5 questions
         
     except Exception as e:
@@ -298,7 +308,7 @@ def analyze_emotional_state(answers: List[str]) -> Dict:
             response_format={"type": "json_object"}
         )
         
-        return json.loads(response.choices[0].message.content)
+        return json.loads(response["content"])
     except Exception as e:
         logger.error(f"Error analyzing emotions: {e}")
         return {
@@ -405,7 +415,7 @@ async def interrogate(request: InterrogationRequest):
                 temperature=0.8
             )
             
-            answer = response.choices[0].message.content
+            answer = response["content"]
             answers.append(answer)
             
             end_time = datetime.utcnow()
